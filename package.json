@@ -12,6 +12,5 @@
     "sdk:build": "npm --workspace sdk run build"
   },
   "dependencies": {
-    "ajv": "8.12.0"
   }
 }
