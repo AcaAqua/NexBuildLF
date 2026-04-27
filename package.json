@@ -12,11 +12,5 @@
     "sdk:build": "npm --workspace sdk run build"
   },
   "dependencies": {
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
-  },
-  "overrides": {
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
   }
 }
