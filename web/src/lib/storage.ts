@@ -1,8 +1,6 @@
 'use client';
 
 import { format, addDays } from 'date-fns';
-
-import { format, addDays } from 'date-fns';
 import { Project, Task, Partner, Settings, Period } from '@luckyfields/nexbuildlf-sdk';
 
 export type { Project, Task, Partner, Settings, Period };
