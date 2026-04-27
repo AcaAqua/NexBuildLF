@@ -1,9 +1,47 @@
 'use client';
 
 import { format, addDays } from 'date-fns';
-import { Project, Task, Partner, Settings, Period } from '@luckyfields/nexbuildlf-sdk';
+// import { Project, Task, Partner, Settings, Period } from '@luckyfields/nexbuildlf-sdk';
 
-export type { Project, Task, Partner, Settings, Period };
+export interface Period {
+  start: string;
+  end: string;
+  label?: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  periods: Period[];
+  assignee: string;
+  status: 'pending' | 'doing' | 'done';
+  color?: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  type: string;
+  status: 'planning' | 'in_progress' | 'completed';
+  location: string;
+  progress: number;
+  updatedAt: string;
+  tasks: Task[];
+  isArchived?: boolean;
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  role: string;
+  phone?: string;
+}
+
+export interface Settings {
+  companyName: string;
+  userName: string;
+  qualifications: string;
+}
 
 const STORAGE_KEY = 'kouteikanri_projects';
 
