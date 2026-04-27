@@ -13,7 +13,7 @@ interface ExportMenuProps {
  */
 export const ExportMenu: React.FC<ExportMenuProps> = ({ data, headers }) => {
   const handleExport = (selectedOnly: boolean) => {
-    const csv = exportToCSV(data, headers, selectedOnly);
+    const csv = exportToCSV(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
