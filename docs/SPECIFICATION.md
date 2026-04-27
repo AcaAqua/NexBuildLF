@@ -13,6 +13,7 @@
 | `memo` | `string?` | 現場全体の特記事項 |
 | `isArchived`| `boolean` | アーカイブフラグ |
 | `tasks` | `Task[]` | 工程の配列 |
+| `dailyMemos` | `object?` | 日付ごとのメモ。キーは `YYYY-MM-DD` 形式。 |
 
 ### Task
 | Field | Type | Description |

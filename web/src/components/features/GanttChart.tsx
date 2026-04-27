@@ -8,12 +8,14 @@ import { Task } from '@/lib/storage';
 
 interface GanttChartProps {
   tasks: Task[];
+  dailyMemos?: { [key: string]: string };
   onUpdate?: (task: Task) => void;
   onEdit?: (task: Task) => void;
   onReorder?: (newTasks: Task[]) => void;
+  onDateClick?: (date: string) => void;
 }
 
-export default function GanttChart({ tasks, onUpdate, onEdit, onReorder }: GanttChartProps) {
+export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, onReorder, onDateClick }: GanttChartProps) {
   // 日付の範囲を計算
   const { startDate, days } = useMemo(() => {
     const today = startOfDay(new Date());
@@ -70,12 +72,21 @@ export default function GanttChart({ tasks, onUpdate, onEdit, onReorder }: Gantt
             <div className="task-name-col header">工程名（順序変更可）</div>
             <div className="timeline-scroll-area">
               <div className="timeline-days" style={{ width: days.length * cellWidth }}>
-                {days.map((day) => (
-                  <div key={`h-${day.getTime()}`} className={`day-cell ${format(day, 'E') === 'Sat' ? 'sat' : format(day, 'E') === 'Sun' ? 'sun' : ''}`}>
-                    <span className="day-num">{format(day, 'd')}</span>
-                    <span className="day-name">{format(day, 'E', { locale: ja })}</span>
-                  </div>
-                ))}
+                {days.map((day) => {
+                  const dateStr = format(day, 'yyyy-MM-dd');
+                  const hasMemo = dailyMemos[dateStr];
+                  return (
+                    <div 
+                      key={`h-${day.getTime()}`} 
+                      className={`day-cell ${format(day, 'E') === 'Sat' ? 'sat' : format(day, 'E') === 'Sun' ? 'sun' : ''} ${hasMemo ? 'has-memo' : ''}`}
+                      onClick={() => onDateClick && onDateClick(dateStr)}
+                    >
+                      <span className="day-num">{format(day, 'd')}</span>
+                      <span className="day-name">{format(day, 'E', { locale: ja })}</span>
+                      {hasMemo && <span className="memo-dot" />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -258,6 +269,27 @@ export default function GanttChart({ tasks, onUpdate, onEdit, onReorder }: Gantt
           justify-content: center;
           border-right: 1px solid var(--border-light);
           background: var(--background);
+          cursor: pointer;
+          position: relative;
+          transition: all 0.2s;
+        }
+
+        .day-cell:hover {
+          background: var(--surface-hover);
+        }
+
+        .day-cell.has-memo {
+          background: rgba(0, 113, 227, 0.03);
+        }
+
+        .memo-dot {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 6px;
+          height: 6px;
+          background: var(--primary);
+          border-radius: 50%;
         }
 
         .day-cell.sat { color: #007aff; }

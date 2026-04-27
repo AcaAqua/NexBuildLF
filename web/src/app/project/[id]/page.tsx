@@ -29,6 +29,11 @@ export default function ProjectDetailPage() {
   // プロジェクト自体の編集
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
 
+  // 日次メモ管理
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [dateMemo, setDateMemo] = useState('');
+
   const loadData = () => {
     const data = storage.getProjects();
     const found = data.find(p => p.id === id);
@@ -133,6 +138,26 @@ export default function ProjectDetailPage() {
     const updated: Project = { ...project, tasks: newTasks };
     storage.saveProject(updated);
     setProject(updated);
+  };
+
+  const handleDateClick = (date: string) => {
+    setSelectedDate(date);
+    setDateMemo(project?.dailyMemos?.[date] || '');
+    setIsDateModalOpen(true);
+  };
+
+  const handleSaveDailyMemo = () => {
+    if (!project) return;
+    const updatedMemos = { ...(project.dailyMemos || {}) };
+    if (dateMemo.trim()) {
+      updatedMemos[selectedDate] = dateMemo;
+    } else {
+      delete updatedMemos[selectedDate];
+    }
+    const updated: Project = { ...project, dailyMemos: updatedMemos };
+    storage.saveProject(updated);
+    setProject(updated);
+    setIsDateModalOpen(false);
   };
 
   if (!project) return null;
@@ -267,9 +292,11 @@ export default function ProjectDetailPage() {
             <div className="chart-wrapper">
               <GanttChart 
                 tasks={displayTasks} 
+                dailyMemos={project.dailyMemos}
                 onUpdate={handleSaveTask}
                 onEdit={handleEditTask}
                 onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
+                onDateClick={handleDateClick}
               />
             </div>
           ) : (
@@ -311,7 +338,6 @@ export default function ProjectDetailPage() {
           )}
         </section>
 
-        {/* Edit/Add Modal */}
         <Modal 
           isOpen={isModalOpen} 
           onClose={() => setIsModalOpen(false)} 
@@ -322,6 +348,28 @@ export default function ProjectDetailPage() {
             onSubmit={handleSaveTask} 
             onCancel={() => setIsModalOpen(false)} 
           />
+        </Modal>
+
+        {/* Daily Memo Modal */}
+        <Modal
+          isOpen={isDateModalOpen}
+          onClose={() => setIsDateModalOpen(false)}
+          title={`${selectedDate} のメモ`}
+        >
+          <div className="daily-memo-form">
+            <textarea
+              value={dateMemo}
+              onChange={(e) => setDateMemo(e.target.value)}
+              placeholder="この日の特記事項を入力..."
+              rows={5}
+              className="form-textarea"
+              autoFocus
+            />
+            <div className="modal-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setIsDateModalOpen(false)}>キャンセル</button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveDailyMemo}>保存する</button>
+            </div>
+          </div>
         </Modal>
       </div>
 

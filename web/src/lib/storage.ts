@@ -14,6 +14,7 @@ export interface Project {
   tasks: Task[];
   memo?: string; // 任意メモ欄（任意）
   isArchived: boolean; // アーカイブ（保管室）フラグ
+  dailyMemos?: { [date: string]: string }; // 日次メモ { "2026-04-27": "メモ内容" }
 }
 
 export interface Period {
