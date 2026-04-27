@@ -1,0 +1,21 @@
+{
+  "name": "工程管理ボード Pro",
+  "short_name": "工程管理",
+  "description": "スマホ・タブレットに最適化されたモダンな工程管理ソフト",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfbfd",
+  "theme_color": "#0071e3",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

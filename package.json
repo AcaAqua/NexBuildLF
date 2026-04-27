@@ -1,0 +1,14 @@
+{
+  "name": "nexbuildlf",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": [
+    "web",
+    "sdk"
+  ],
+  "scripts": {
+    "dev": "npm --workspace web run dev",
+    "build": "npm --workspace web run build",
+    "sdk:build": "npm --workspace sdk run build"
+  }
+}

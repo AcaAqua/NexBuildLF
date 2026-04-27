@@ -1,0 +1,318 @@
+'use client';
+
+import React, { useMemo } from 'react';
+import { format, addDays, startOfDay, differenceInDays, min, max, eachDayOfInterval, parseISO } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { Task } from '@/lib/storage';
+
+interface GanttChartProps {
+  tasks: Task[];
+  onUpdate?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
+  onReorder?: (newTasks: Task[]) => void;
+}
+
+export default function GanttChart({ tasks, onUpdate, onEdit, onReorder }: GanttChartProps) {
+  // 日付の範囲を計算
+  const { startDate, days } = useMemo(() => {
+    const today = startOfDay(new Date());
+    let start = addDays(today, -3); 
+
+    if (tasks && tasks.length > 0) {
+      const allStarts = tasks.flatMap(t => t.periods.map(p => parseISO(p.start))).filter(d => !isNaN(d.getTime()));
+      if (allStarts.length > 0) {
+        const earliestTask = min(allStarts);
+        if (earliestTask < start) start = startOfDay(earliestTask);
+      }
+    }
+
+    const daysCount = 31;
+    const daysArr = [];
+    for (let i = 0; i < daysCount; i++) {
+      daysArr.push(addDays(start, i));
+    }
+
+    return { startDate: start, days: daysArr };
+  }, [tasks]);
+
+  const cellWidth = 50; 
+
+  const handleDragEnd = (task: Task, periodIndex: number, offset: number) => {
+    const daysMoved = Math.round(offset / cellWidth);
+    if (daysMoved === 0) return;
+
+    const updatedPeriods = [...task.periods];
+    const period = updatedPeriods[periodIndex];
+    
+    const newStart = addDays(parseISO(period.start), daysMoved);
+    const newEnd = addDays(parseISO(period.end), daysMoved);
+
+    updatedPeriods[periodIndex] = {
+      start: format(newStart, 'yyyy-MM-dd'),
+      end: format(newEnd, 'yyyy-MM-dd')
+    };
+
+    if (onUpdate) {
+      onUpdate({
+        ...task,
+        periods: updatedPeriods
+      });
+    }
+  };
+
+  return (
+    <>
+      <div className="gantt-wrapper">
+        <div className="gantt-container">
+          {/* Timeline Header */}
+          <div className="gantt-header">
+            <div className="task-name-col header">工程名（順序変更可）</div>
+            <div className="timeline-scroll-area">
+              <div className="timeline-days" style={{ width: days.length * cellWidth }}>
+                {days.map((day) => (
+                  <div key={`h-${day.getTime()}`} className={`day-cell ${format(day, 'E') === 'Sat' ? 'sat' : format(day, 'E') === 'Sun' ? 'sun' : ''}`}>
+                    <span className="day-num">{format(day, 'd')}</span>
+                    <span className="day-name">{format(day, 'E', { locale: ja })}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Body - Reorderable Group */}
+          <Reorder.Group 
+            axis="y" 
+            values={tasks} 
+            onReorder={onReorder || (() => {})}
+            className="gantt-body"
+          >
+            {(!tasks || tasks.length === 0) ? (
+              <div className="empty-state">工程が登録されていません</div>
+            ) : (
+              tasks.map((task) => {
+                return (
+                  <Reorder.Item key={task.id} value={task} className="gantt-row">
+                    <div className="task-name-col clickable" onClick={() => onEdit && onEdit(task)}>
+                      <div className="drag-handle">⠿</div>
+                      <div className="task-info">
+                        <span className="task-title">{task.title}</span>
+                        <span className="task-assignee">{task.assignee}</span>
+                      </div>
+                    </div>
+                    <div className="timeline-scroll-area">
+                      <div className="timeline-grid" style={{ width: days.length * cellWidth, position: 'relative' }}>
+                        {/* Grid background lines */}
+                        {days.map(day => (
+                          <div key={`g-${task.id}-${day.getTime()}`} className="grid-line" />
+                        ))}
+                        
+                        {/* Multiple Task Bars (Periods) */}
+                        {task.periods.map((period, pIdx) => {
+                          const sDate = startOfDay(parseISO(period.start));
+                          const eDate = startOfDay(parseISO(period.end));
+                          if (isNaN(sDate.getTime())) return null;
+
+                          const startOffset = differenceInDays(sDate, startDate);
+                          const duration = isNaN(eDate.getTime()) ? 1 : differenceInDays(eDate, sDate) + 1;
+
+                          return (
+                            <motion.div 
+                              key={`${task.id}-p-${pIdx}`}
+                              drag="x"
+                              dragMomentum={false}
+                              dragElastic={0.05}
+                              onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
+                              className={`task-bar ${task.status} draggable`}
+                              style={{ 
+                                position: 'absolute',
+                                top: '10px',
+                                left: `${startOffset * cellWidth + 2}px`, 
+                                width: `${Math.max(20, duration * cellWidth - 4)}px`,
+                                zIndex: 10,
+                                backgroundColor: task.color || '#e5e5ea',
+                                color: task.color && task.color !== '#e5e5ea' ? '#333' : 'var(--text-sub)',
+                                borderRadius: '16px'
+                              }}
+                              whileDrag={{ 
+                                scale: 1.05, 
+                                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                                zIndex: 100
+                              }}
+                            >
+                              <span className="bar-label">{period.label || task.title}</span>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </Reorder.Item>
+                );
+              })
+            )}
+          </Reorder.Group>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .gantt-wrapper {
+          width: 100%;
+          overflow-x: auto;
+          background: var(--surface);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--border-light);
+          -webkit-overflow-scrolling: touch;
+        }
+        /* ... styles continue ... */
+
+        .gantt-container {
+          min-width: 600px; /* 最小幅を確保 */
+        }
+
+        .gantt-header, .gantt-row {
+          display: flex;
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .task-name-col {
+          width: 160px;
+          min-width: 160px;
+          padding: 12px 16px;
+          border-right: 1px solid var(--border-light);
+          background: var(--surface);
+          position: sticky;
+          left: 0;
+          z-index: 20; /* 10から20に上げてReorder中も隠れないように */
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          transition: background-color 0.2s;
+        }
+
+        .task-name-col.clickable {
+          cursor: pointer;
+        }
+
+        .task-name-col.clickable:hover {
+          background-color: var(--surface-hover);
+        }
+
+        .drag-handle {
+          color: var(--border);
+          font-size: 14px;
+          cursor: grab;
+          user-select: none;
+        }
+
+        .drag-handle:active {
+          cursor: grabbing;
+        }
+
+        .task-info {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .task-name-col.header {
+          font-weight: 800;
+          font-size: 13px;
+          color: var(--text-sub);
+          background: var(--background);
+        }
+
+        .task-title {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--text-main);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .task-assignee {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--primary);
+          opacity: 0.7;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .timeline-scroll-area {
+          flex: 1;
+        }
+
+        .timeline-days, .timeline-grid {
+          display: flex;
+          position: relative;
+        }
+
+        .day-cell {
+          width: 50px;
+          height: 60px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          border-right: 1px solid var(--border-light);
+          background: var(--background);
+        }
+
+        .day-cell.sat { color: #007aff; }
+        .day-cell.sun { color: #ff3b30; }
+
+        .day-num { font-size: 14px; font-weight: 700; }
+        .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
+
+        .gantt-row {
+          height: 52px;
+        }
+
+        .timeline-grid {
+          height: 100%;
+        }
+
+        .grid-line {
+          width: 50px;
+          height: 100%;
+          border-right: 1px solid var(--border-light);
+          opacity: 0.3;
+        }
+
+        .task-bar {
+          position: absolute;
+          top: 10px;
+          height: 32px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          padding: 0 10px;
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          box-shadow: var(--shadow-sm);
+          z-index: 1;
+        }
+
+        .task-bar.pending { background: var(--border, #d2d2d7); color: var(--text-sub, #86868b); }
+        .task-bar.doing { background: var(--primary-pastel, #e8f2ff); color: var(--primary, #0071e3); border: 1px solid var(--primary, #0071e3); }
+        .task-bar.done { background: var(--success-pastel, #eafaf1); color: var(--success, #34c759); border: 1px solid var(--success, #34c759); }
+
+        .bar-label {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .empty-state {
+          padding: 40px;
+          text-align: center;
+          color: var(--text-sub);
+          width: 100%;
+        }
+      `}</style>
+    </>
+  );
+}
