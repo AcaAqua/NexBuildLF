@@ -10,5 +10,7 @@
     "dev": "npm --workspace web run dev",
     "build": "npm run sdk:build && npm --workspace web run build",
     "sdk:build": "npm --workspace sdk run build"
+  },
+  "dependencies": {
   }
 }
