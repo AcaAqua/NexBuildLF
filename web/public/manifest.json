@@ -1,7 +1,7 @@
 {
-  "name": "工程管理ボード Pro",
-  "short_name": "工程管理",
-  "description": "スマホ・タブレットに最適化されたモダンな工程管理ソフト",
+  "name": "NexBuildLF",
+  "short_name": "NexBuild",
+  "description": "Professional Construction Field Management",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fbfbfd",

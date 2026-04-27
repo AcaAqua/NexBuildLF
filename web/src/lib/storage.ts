@@ -2,53 +2,10 @@
 
 import { format, addDays } from 'date-fns';
 
-// プロジェクトの型定義
-export interface Project {
-  id: string;
-  title: string;
-  type: string;
-  status: 'planning' | 'in_progress' | 'delayed' | 'completed';
-  location: string;
-  progress: number;
-  updatedAt: string;
-  tasks: Task[];
-  memo?: string; // 任意メモ欄（任意）
-  isArchived: boolean; // アーカイブ（保管室）フラグ
-  dailyMemos?: { [date: string]: string }; // 日次メモ { "2026-04-27": "メモ内容" }
-}
+import { format, addDays } from 'date-fns';
+import { Project, Task, Partner, Settings, Period } from '@luckyfields/nexbuildlf-sdk';
 
-export interface Period {
-  start: string;
-  end: string;
-  label?: string; // 期間ごとの名前（例：配筋検査、コンクリ打設など）
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  periods: Period[]; // 多期工事に対応
-  assignee: string;
-  status: 'pending' | 'doing' | 'done';
-  color?: string;
-  memo?: string; // 現場メモ
-  photo?: string; // Base64エンコードされた写真データ
-}
-
-export interface Partner {
-  id: string;
-  name: string;
-  company?: string; // 所属会社名
-  type: string; // 業種
-  phone?: string;
-  email?: string;
-  notes?: string;
-}
-
-export interface Settings {
-  companyName: string;
-  userName: string;
-  qualifications: string;
-}
+export type { Project, Task, Partner, Settings, Period };
 
 const STORAGE_KEY = 'kouteikanri_projects';
 

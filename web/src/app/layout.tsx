@@ -8,13 +8,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "工程管理ボード Pro",
-  description: "スマホ・タブレットに最適化されたモダンな工程管理ソフト",
+  title: "NexBuildLF - プロフェッショナル工程管理",
+  description: "現場の「いま」をスマートに管理。オフライン対応のモダン工程管理アプリ",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "工程管理 Pro",
+    title: "NexBuildLF",
   },
 };
 
