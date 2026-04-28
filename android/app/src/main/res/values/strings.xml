@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NexBuildLF</string>
+    <string name="title_activity_main">NexBuildLF</string>
+    <string name="package_name">com.luckyfields.nexbuildlf</string>
+    <string name="custom_url_scheme">com.luckyfields.nexbuildlf</string>
+</resources>

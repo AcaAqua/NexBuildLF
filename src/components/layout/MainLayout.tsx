@@ -1,25 +1,36 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Calendar, Users, Settings, Plus, Archive } from 'lucide-react';
+import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { storage } from "@/lib/storage";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const navItems = [
-  { icon: Home, label: 'ホーム', href: '/' },
-  { icon: Archive, label: 'アーカイブ', href: '/archive' },
+  { icon: Briefcase, label: '現場一覧', href: '/' },
+  { icon: Calendar, label: '予定ボード', href: '/schedule' },
   { icon: Users, label: '協力業者', href: '/partners' },
+  { icon: Archive, label: '保管室', href: '/archive' },
   { icon: Settings, label: '設定', href: '/settings' },
+  { icon: Info, label: 'このアプリについて', href: '/about' },
 ];
 
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    // UIスケールの適用
+    const settings = storage.getSettings();
+    const scale = settings.uiScale || 'md';
+    document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+    document.body.classList.add(`ui-size-${scale}`);
+  }, []);
 
   return (
     <div className="app-shell">

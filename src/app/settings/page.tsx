@@ -21,6 +21,9 @@ export default function SettingsPage() {
     e.preventDefault();
     storage.saveSettings(settings);
     setSaveMessage('設定を保存しました。');
+    // UIスケールの変更を即時反映させる
+    document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+    document.body.classList.add(`ui-size-${settings.uiScale || 'md'}`);
     setTimeout(() => setSaveMessage(''), 3000);
   };
 
@@ -84,7 +87,7 @@ export default function SettingsPage() {
             <h2>表示・テーマ設定</h2>
             <p className="description">アプリの見た目（ライトモード・ダークモード）を変更します。</p>
             {mounted && (
-              <div className="theme-toggle-group">
+              <div className="theme-toggle-group" style={{ marginBottom: '24px' }}>
                 <button 
                   className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
                   onClick={() => setTheme('light')}
@@ -108,6 +111,43 @@ export default function SettingsPage() {
                 </button>
               </div>
             )}
+
+            <h3 style={{ fontSize: '15px', marginBottom: '12px', marginTop: '16px' }}>全体の表示サイズ</h3>
+            <div className="theme-toggle-group">
+              <button 
+                className={`theme-btn ${settings.uiScale === 'sm' ? 'active' : ''}`}
+                onClick={() => {
+                  setSettings({...settings, uiScale: 'sm'});
+                  storage.saveSettings({...settings, uiScale: 'sm'});
+                  document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+                  document.body.classList.add('ui-size-sm');
+                }}
+              >
+                小 (情報量多め)
+              </button>
+              <button 
+                className={`theme-btn ${(!settings.uiScale || settings.uiScale === 'md') ? 'active' : ''}`}
+                onClick={() => {
+                  setSettings({...settings, uiScale: 'md'});
+                  storage.saveSettings({...settings, uiScale: 'md'});
+                  document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+                  document.body.classList.add('ui-size-md');
+                }}
+              >
+                標準
+              </button>
+              <button 
+                className={`theme-btn ${settings.uiScale === 'lg' ? 'active' : ''}`}
+                onClick={() => {
+                  setSettings({...settings, uiScale: 'lg'});
+                  storage.saveSettings({...settings, uiScale: 'lg'});
+                  document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+                  document.body.classList.add('ui-size-lg');
+                }}
+              >
+                大 (タップしやすい)
+              </button>
+            </div>
           </section>
 
           {/* プロファイル設定 */}

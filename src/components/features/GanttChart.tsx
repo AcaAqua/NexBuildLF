@@ -4,7 +4,8 @@ import React, { useMemo } from 'react';
 import { format, addDays, startOfDay, differenceInDays, min, max, eachDayOfInterval, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Task } from '@/lib/storage';
+import { Maximize, Minimize } from 'lucide-react';
+import { storage, Task, Settings } from '@/lib/storage';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -16,6 +17,15 @@ interface GanttChartProps {
 }
 
 export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, onReorder, onDateClick }: GanttChartProps) {
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [uiScale, setUiScale] = React.useState<'sm' | 'md' | 'lg'>('md');
+
+  React.useEffect(() => {
+    setUiScale(storage.getSettings().uiScale || 'md');
+  }, []);
+
+  const cellWidth = uiScale === 'sm' ? 36 : uiScale === 'lg' ? 64 : 50;
+
   // 日付の範囲を計算
   const { startDate, days } = useMemo(() => {
     const today = startOfDay(new Date());
@@ -37,8 +47,6 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
     return { startDate: start, days: daysArr };
   }, [tasks]);
-
-  const cellWidth = 50; 
 
   const handleDragEnd = (task: Task, periodIndex: number, offset: number) => {
     const daysMoved = Math.round(offset / cellWidth);
@@ -65,11 +73,26 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
   return (
     <>
-      <div className="gantt-wrapper">
+      <div className={`gantt-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+        {isFullscreen && (
+          <div className="fullscreen-header glass">
+            <h2>打ち合わせモード（全画面）</h2>
+            <button className="btn btn-outline btn-sm" onClick={() => setIsFullscreen(false)}>
+              <Minimize size={16} /> 閉じる
+            </button>
+          </div>
+        )}
         <div className="gantt-container">
           {/* Timeline Header */}
           <div className="gantt-header">
-            <div className="task-name-col header">工程名（順序変更可）</div>
+            <div className="task-name-col header">
+              <span>工程名（順序変更可）</span>
+              {!isFullscreen && (
+                <button className="icon-btn-small" onClick={() => setIsFullscreen(true)} title="全画面で表示">
+                  <Maximize size={14} />
+                </button>
+              )}
+            </div>
             <div className="timeline-scroll-area">
               <div className="timeline-days" style={{ width: days.length * cellWidth }}>
                 {days.map((day) => {
@@ -203,15 +226,28 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           width: 160px;
           min-width: 160px;
           padding: 12px 16px;
-          border-right: 1px solid var(--border-light);
           background: var(--surface);
           position: sticky;
           left: 0;
-          z-index: 20; /* 10から20に上げてReorder中も隠れないように */
+          z-index: 20;
           display: flex;
           align-items: center;
           gap: 10px;
           transition: background-color 0.2s;
+          box-shadow: 4px 0 12px rgba(0, 0, 0, 0.05); /* スクロール時の重なりを自然に見せる境界 */
+          clip-path: inset(0 -20px 0 0); /* 影が右側にだけ落ちるようにクリップ */
+        }
+
+        .ui-size-sm .task-name-col {
+          width: 120px;
+          min-width: 120px;
+          padding: 8px 12px;
+        }
+
+        .ui-size-lg .task-name-col {
+          width: 200px;
+          min-width: 200px;
+          padding: 16px 20px;
         }
 
         .task-name-col.clickable {
@@ -244,6 +280,25 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           font-size: 13px;
           color: var(--text-sub);
           background: var(--background);
+          justify-content: space-between;
+        }
+
+        .icon-btn-small {
+          background: none;
+          border: none;
+          color: var(--text-sub);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+
+        .icon-btn-small:hover {
+          background: var(--surface-hover);
+          color: var(--primary);
         }
 
         .task-title {
@@ -365,6 +420,48 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           text-align: center;
           color: var(--text-sub);
           width: 100%;
+        }
+
+        /* Fullscreen Mode (Meeting Mode) */
+        .fullscreen-mode {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 9999;
+          width: 100vw !important;
+          height: 100vh !important;
+          max-height: 100vh;
+          border-radius: 0;
+          border: none;
+          background: var(--background);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .fullscreen-mode .gantt-container {
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        .fullscreen-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 24px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border-light);
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
+
+        .fullscreen-header h2 {
+          font-size: 16px;
+          font-weight: 800;
+          margin: 0;
+          color: var(--primary);
         }
       `}</style>
     </>

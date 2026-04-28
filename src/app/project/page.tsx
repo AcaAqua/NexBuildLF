@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText } from "lucide-react";
@@ -10,9 +10,11 @@ import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
+import { Suspense } from 'react';
 
-export default function ProjectDetailPage() {
-  const { id } = useParams();
+function ProjectDetailContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   
@@ -729,5 +731,13 @@ export default function ProjectDetailPage() {
         }
       `}</style>
     </MainLayout>
+  );
+}
+
+export default function ProjectDetailPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+      <ProjectDetailContent />
+    </Suspense>
   );
 }

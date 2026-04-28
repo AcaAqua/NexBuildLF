@@ -41,6 +41,7 @@ export interface Settings {
   companyName: string;
   userName: string;
   qualifications: string;
+  uiScale?: 'sm' | 'md' | 'lg'; // 表示サイズ設定
 }
 
 const STORAGE_KEY = 'kouteikanri_projects';
@@ -148,9 +149,13 @@ export const storage = {
 
   // 設定関連
   getSettings: (): Settings => {
-    if (typeof window === 'undefined') return { companyName: '', userName: '', qualifications: '' };
+    if (typeof window === 'undefined') return { companyName: '', userName: '', qualifications: '', uiScale: 'md' };
     const data = localStorage.getItem('kouteikanri_settings');
-    return data ? JSON.parse(data) : { companyName: '', userName: '', qualifications: '' };
+    if (data) {
+      const parsed = JSON.parse(data);
+      return { ...parsed, uiScale: parsed.uiScale || 'md' };
+    }
+    return { companyName: '', userName: '', qualifications: '', uiScale: 'md' };
   },
 
   saveSettings: (settings: Settings) => {

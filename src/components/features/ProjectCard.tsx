@@ -27,7 +27,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
   const statusInfo = statusMap[status] || statusMap.planning;
 
   return (
-    <Link href={`/project/${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+    <Link href={`/project?id=${id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
       <motion.div 
         whileHover={{ y: -4, transition: { duration: 0.2 } }}
         whileTap={{ scale: 0.98 }}

@@ -8,6 +8,10 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig: NextConfig = {
+  output: "export",
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: false,
   eslint: {
     ignoreDuringBuilds: true,
