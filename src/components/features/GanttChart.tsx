@@ -86,7 +86,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           {/* Timeline Header */}
           <div className="gantt-header">
             <div className="task-name-col header">
-              <span>工程名（順序変更可）</span>
+              <span>工程名</span>
               {!isFullscreen && (
                 <button className="icon-btn-small" onClick={() => setIsFullscreen(true)} title="全画面で表示">
                   <Maximize size={14} />
@@ -94,7 +94,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
               )}
             </div>
             <div className="timeline-scroll-area">
-              <div className="timeline-days" style={{ width: days.length * cellWidth }}>
+              <div className="timeline-days">
                 {days.map((day) => {
                   const dateStr = format(day, 'yyyy-MM-dd');
                   const hasMemo = dailyMemos[dateStr];
@@ -135,13 +135,13 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                       </div>
                     </div>
                     <div className="timeline-scroll-area">
-                      <div className="timeline-grid" style={{ width: days.length * cellWidth, position: 'relative' }}>
+                      <div className="timeline-grid">
                         {/* Grid background lines */}
                         {days.map((day, i) => (
                           <div 
                             key={`g-${task.id}-${day.getTime()}`} 
                             className="grid-line" 
-                            style={{ left: `${i * cellWidth}px`, top: 0 }}
+                            style={{ left: `calc(var(--gantt-cell-width) * ${i})`, top: 0 }}
                           />
                         ))}
                         
@@ -157,14 +157,10 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                           return (
                             <div 
                               key={`${task.id}-p-${pIdx}-wrap`}
+                              className="task-bar-container"
                               style={{ 
-                                position: 'absolute',
-                                top: '50%',
-                                marginTop: '-16px',
-                                left: `${startOffset * cellWidth + 2}px`, 
-                                width: `${Math.max(20, duration * cellWidth - 4)}px`,
-                                height: '32px',
-                                zIndex: 10
+                                left: `calc(var(--gantt-cell-width) * ${startOffset} + 2px)`, 
+                                width: `calc(var(--gantt-cell-width) * ${duration} - 4px)`,
                               }}
                             >
                               <motion.div 
@@ -174,12 +170,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                 onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
                                 className={`task-bar ${task.status} draggable`}
                                 style={{ 
-                                  position: 'relative',
-                                  width: '100%',
-                                  height: '100%',
                                   backgroundColor: task.color ? task.color : undefined,
                                   color: task.color ? '#ffffff' : undefined,
-                                  borderRadius: '16px'
                                 }}
                                 whileDrag={{ 
                                   scale: 1.05, 
@@ -205,49 +197,48 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
       <style jsx>{`
         .gantt-wrapper {
           width: 100%;
-          overflow-x: auto;
           background: var(--surface);
           border-radius: var(--radius-lg);
           border: 1px solid var(--border-light);
-          -webkit-overflow-scrolling: touch;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
-        /* ... styles continue ... */
 
         .gantt-container {
-          min-width: 600px; /* 最小幅を確保 */
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          width: 100%;
         }
 
         .gantt-header, .gantt-row {
           display: flex;
           border-bottom: 1px solid var(--border-light);
+          width: 100%;
         }
 
         .task-name-col {
-          width: 160px;
-          min-width: 160px;
+          width: var(--gantt-sidebar-width);
+          min-width: var(--gantt-sidebar-width);
           padding: 12px 16px;
           background: var(--surface);
-          position: sticky;
-          left: 0;
-          z-index: 20;
+          z-index: 30;
           display: flex;
           align-items: center;
           gap: 10px;
-          transition: background-color 0.2s;
-          box-shadow: 4px 0 12px rgba(0, 0, 0, 0.05); /* スクロール時の重なりを自然に見せる境界 */
-          clip-path: inset(0 -20px 0 0); /* 影が右側にだけ落ちるようにクリップ */
+          transition: all 0.2s;
+          border-right: 1px solid var(--border-light);
+          box-shadow: 4px 0 8px rgba(0, 0, 0, 0.02);
         }
 
-        .ui-size-sm .task-name-col {
-          width: 120px;
-          min-width: 120px;
-          padding: 8px 12px;
-        }
-
-        .ui-size-lg .task-name-col {
-          width: 200px;
-          min-width: 200px;
-          padding: 16px 20px;
+        .task-name-col.header {
+          font-weight: 800;
+          font-size: 12px;
+          color: var(--text-sub);
+          background: var(--background);
+          justify-content: space-between;
+          height: 60px;
         }
 
         .task-name-col.clickable {
@@ -265,40 +256,10 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           user-select: none;
         }
 
-        .drag-handle:active {
-          cursor: grabbing;
-        }
-
         .task-info {
           display: flex;
           flex-direction: column;
           overflow: hidden;
-        }
-
-        .task-name-col.header {
-          font-weight: 800;
-          font-size: 13px;
-          color: var(--text-sub);
-          background: var(--background);
-          justify-content: space-between;
-        }
-
-        .icon-btn-small {
-          background: none;
-          border: none;
-          color: var(--text-sub);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 4px;
-          border-radius: 4px;
-          transition: all 0.2s;
-        }
-
-        .icon-btn-small:hover {
-          background: var(--surface-hover);
-          color: var(--primary);
         }
 
         .task-title {
@@ -322,23 +283,34 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
         .timeline-scroll-area {
           flex: 1;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
           display: flex;
           flex-direction: column;
         }
 
+        .timeline-scroll-area::-webkit-scrollbar {
+          height: 6px;
+        }
+        .timeline-scroll-area::-webkit-scrollbar-thumb {
+          background: var(--border-light);
+          border-radius: 3px;
+        }
+
         .timeline-days {
           display: flex;
-          position: relative;
+          min-width: max-content;
         }
         
         .timeline-grid {
           position: relative;
-          flex: 1;
-          width: 100%;
+          min-width: max-content;
+          height: 100%;
         }
 
         .day-cell {
-          width: 50px;
+          width: var(--gantt-cell-width);
           height: 60px;
           display: flex;
           flex-direction: column;
@@ -355,59 +327,59 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           background: var(--surface-hover);
         }
 
-        .day-cell.has-memo {
-          background: rgba(0, 113, 227, 0.03);
-        }
+        .day-cell.sat { color: #007aff; }
+        .day-cell.sun { color: #ff3b30; }
+        .day-num { font-size: 14px; font-weight: 700; }
+        .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
 
         .memo-dot {
           position: absolute;
-          top: 8px;
-          right: 8px;
-          width: 6px;
-          height: 6px;
+          top: 6px;
+          right: 6px;
+          width: 5px;
+          height: 5px;
           background: var(--primary);
           border-radius: 50%;
         }
 
-        .day-cell.sat { color: #007aff; }
-        .day-cell.sun { color: #ff3b30; }
-
-        .day-num { font-size: 14px; font-weight: 700; }
-        .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
-
         .gantt-row {
-          min-height: 64px;
-        }
-
-        .timeline-grid {
-          height: 100%;
+          min-height: var(--gantt-row-height);
         }
 
         .grid-line {
           position: absolute;
-          width: 50px;
+          width: var(--gantt-cell-width);
           height: 100%;
           border-right: 1px solid var(--border-light);
           opacity: 0.3;
         }
 
+        .task-bar-container {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          height: 32px;
+          z-index: 10;
+        }
+
         .task-bar {
           width: 100%;
           height: 100%;
-          border-radius: 6px;
+          border-radius: 16px;
           display: flex;
           align-items: center;
-          padding: 0 10px;
+          padding: 0 12px;
           color: white;
           font-size: 11px;
           font-weight: 700;
           box-shadow: var(--shadow-sm);
-          z-index: 1;
+          position: relative;
+          cursor: grab;
         }
 
-        .task-bar.pending { background: var(--border, #d2d2d7); color: var(--text-sub, #86868b); }
-        .task-bar.doing { background: var(--primary-pastel, #e8f2ff); color: var(--primary, #0071e3); border: 1px solid var(--primary, #0071e3); }
-        .task-bar.done { background: var(--success-pastel, #eafaf1); color: var(--success, #34c759); border: 1px solid var(--success, #34c759); }
+        .task-bar.pending { background: #d2d2d7; color: #86868b; }
+        .task-bar.doing { background: var(--primary-pastel); color: var(--primary); border: 1px solid var(--primary); }
+        .task-bar.done { background: var(--success-pastel); color: var(--success); border: 1px solid var(--success); }
 
         .bar-label {
           white-space: nowrap;
@@ -422,27 +394,13 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           width: 100%;
         }
 
-        /* Fullscreen Mode (Meeting Mode) */
         .fullscreen-mode {
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          top: 0; left: 0; right: 0; bottom: 0;
           z-index: 9999;
-          width: 100vw !important;
-          height: 100vh !important;
-          max-height: 100vh;
-          border-radius: 0;
-          border: none;
           background: var(--background);
           display: flex;
           flex-direction: column;
-        }
-
-        .fullscreen-mode .gantt-container {
-          flex: 1;
-          overflow-y: auto;
         }
 
         .fullscreen-header {
@@ -452,16 +410,20 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           padding: 12px 24px;
           background: var(--surface);
           border-bottom: 1px solid var(--border-light);
-          position: sticky;
-          top: 0;
-          z-index: 50;
         }
 
         .fullscreen-header h2 {
-          font-size: 16px;
-          font-weight: 800;
-          margin: 0;
-          color: var(--primary);
+          font-size: 16px; font-weight: 800; margin: 0; color: var(--primary);
+        }
+
+        .icon-btn-small {
+          background: none; border: none; color: var(--text-sub); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          padding: 4px; border-radius: 4px; transition: all 0.2s;
+        }
+
+        .icon-btn-small:hover {
+          background: var(--surface-hover); color: var(--primary);
         }
       `}</style>
     </>

@@ -29,6 +29,9 @@
   
   --header-height: 60px;
   --navbar-height: 64px;
+  --gantt-cell-width: 50px;
+  --gantt-row-height: 64px;
+  --gantt-sidebar-width: 160px;
 
   /* Default Size Variables (md) */
   --font-size-base: 14px;
@@ -61,6 +64,9 @@ body.ui-size-sm {
   --spacing-lg: 16px;
   --header-height: 50px;
   --navbar-height: 54px;
+  --gantt-cell-width: 36px;
+  --gantt-row-height: 52px;
+  --gantt-sidebar-width: 120px;
 }
 
 body.ui-size-lg {
@@ -73,6 +79,9 @@ body.ui-size-lg {
   --spacing-lg: 32px;
   --header-height: 70px;
   --navbar-height: 74px;
+  --gantt-cell-width: 64px;
+  --gantt-row-height: 80px;
+  --gantt-sidebar-width: 200px;
 }
 
 :root.dark, .dark {

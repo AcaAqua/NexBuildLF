@@ -9,6 +9,7 @@ import { storage } from "@/lib/storage";
 
 interface MainLayoutProps {
   children: React.ReactNode;
+  hideNav?: boolean;
 }
 
 const navItems = [
@@ -21,8 +22,9 @@ const navItems = [
 ];
 
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout({ children, hideNav = false }: MainLayoutProps) {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // UIスケールの適用
@@ -30,35 +32,42 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const scale = settings.uiScale || 'md';
     document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
     document.body.classList.add(`ui-size-${scale}`);
+    setMounted(true);
   }, []);
 
+  if (!mounted) return <div className="app-shell" style={{ background: 'var(--background)' }} />;
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${hideNav ? 'nav-hidden' : ''}`}>
       {/* Sidebar for Desktop/Tablet */}
-      <aside className="sidebar glass">
-        <div className="sidebar-header">
-          <span className="logo-text">工程管理 Pro</span>
-        </div>
-        <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
-                <item.icon size={22} />
-                <span>{item.label}</span>
-              </div>
-            </Link>
-          ))}
-        </nav>
-      </aside>
+      {!hideNav && (
+        <aside className="sidebar glass">
+          <div className="sidebar-header">
+            <span className="logo-text">工程管理 Pro</span>
+          </div>
+          <nav className="sidebar-nav">
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href}>
+                <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
+                  <item.icon size={22} />
+                  <span>{item.label}</span>
+                </div>
+              </Link>
+            ))}
+          </nav>
+        </aside>
+      )}
 
       {/* Main Content Area */}
       <main className="main-content">
-        <header className="mobile-header glass">
-          <span className="logo-text">工程管理 Pro</span>
-          <button className="icon-btn" aria-label="新規案件を追加">
-            <Plus size={24} />
-          </button>
-        </header>
+        {!hideNav && (
+          <header className="mobile-header glass">
+            <span className="logo-text">工程管理 Pro</span>
+            <button className="icon-btn" aria-label="新規案件を追加">
+              <Plus size={24} />
+            </button>
+          </header>
+        )}
 
         <div className="page-wrapper">
           <AnimatePresence mode="wait">
@@ -80,16 +89,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="bottom-nav glass">
-        {navItems.map((item) => (
-          <Link key={item.href} href={item.href} className="bottom-nav-item">
-            <div className={`icon-wrapper ${pathname === item.href ? 'active' : ''}`}>
-              <item.icon size={24} />
-              <span className="label">{item.label}</span>
-            </div>
-          </Link>
-        ))}
-      </nav>
+      {!hideNav && (
+        <nav className="bottom-nav glass">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="bottom-nav-item">
+              <div className={`icon-wrapper ${pathname === item.href ? 'active' : ''}`}>
+                <item.icon size={24} />
+                <span className="label">{item.label}</span>
+              </div>
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <style jsx>{`
         .app-shell {
@@ -155,6 +166,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
           flex-direction: column;
           overflow-y: auto;
           padding-bottom: var(--navbar-height); /* For mobile nav */
+        }
+
+        .nav-hidden .main-content {
+          padding-bottom: 0;
+        }
+
+        .nav-hidden .page-wrapper {
+          padding: 0;
         }
 
         .mobile-header {

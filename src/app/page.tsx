@@ -157,6 +157,13 @@ export default function Home() {
                 style={{ position: 'relative' }}
               >
                 <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: '8px' }}>
+                  <Link 
+                    href={`/meeting?projectId=${project.id}`}
+                    title="打ち合わせモード (全画面)"
+                    style={{ background: 'var(--primary-pastel)', color: 'var(--primary)', padding: '6px', borderRadius: '6px', border: '1px solid var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <LayoutGrid size={16} />
+                  </Link>
                   <button 
                     className="delete-btn" 
                     onClick={(e) => handleArchive(project, e)}
