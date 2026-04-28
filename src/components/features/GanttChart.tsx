@@ -146,8 +146,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                 left: `${startOffset * cellWidth + 2}px`, 
                                 width: `${Math.max(20, duration * cellWidth - 4)}px`,
                                 zIndex: 10,
-                                backgroundColor: task.color || '#e5e5ea',
-                                color: task.color && task.color !== '#e5e5ea' ? '#333' : 'var(--text-sub)',
+                                backgroundColor: task.color ? task.color : undefined,
+                                color: task.color ? '#ffffff' : undefined,
                                 borderRadius: '16px'
                               }}
                               whileDrag={{ 
