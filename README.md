@@ -41,5 +41,40 @@ npm run dev
 npm run build
 ```
 
+## Deployment
+
+NexBuildLF is deployed on Netlify as a root-level Next.js application.
+
+### Netlify Build Settings
+
+- Base directory: empty
+- Package directory: empty
+- Build command: `npm run build`
+- Publish directory: `.next`
+- Functions directory: empty
+- Runtime: Next.js Runtime
+
+### Important Notes
+
+This project was simplified from an npm workspace / monorepo structure into a root-level Next.js app for stable Netlify deployment.
+
+The previous structure caused dependency installation and publish directory resolution issues on Netlify.
+
+Current deployment assumptions:
+
+- `package.json` is located at the repository root.
+- Next.js source files are located at the repository root.
+- `.next` is generated at the repository root after `npm run build`.
+- `sdk/` may remain in the repository, but it is not part of the production build for now.
+- `web/` may remain as legacy/reference material only, unless fully removed later.
+
+### PWA
+
+PWA support is enabled.
+After deployment, open the Netlify URL on a smartphone browser and use:
+
+- Chrome / Android: Add to Home screen
+- Safari / iOS: Share → Add to Home Screen
+
 ---
 © 2026 NexBuildLF Project. Built for Professionals.
