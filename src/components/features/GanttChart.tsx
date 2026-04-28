@@ -114,8 +114,12 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                     <div className="timeline-scroll-area">
                       <div className="timeline-grid" style={{ width: days.length * cellWidth, position: 'relative' }}>
                         {/* Grid background lines */}
-                        {days.map(day => (
-                          <div key={`g-${task.id}-${day.getTime()}`} className="grid-line" />
+                        {days.map((day, i) => (
+                          <div 
+                            key={`g-${task.id}-${day.getTime()}`} 
+                            className="grid-line" 
+                            style={{ left: `${i * cellWidth}px`, top: 0 }}
+                          />
                         ))}
                         
                         {/* Multiple Task Bars (Periods) */}
@@ -137,7 +141,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                               className={`task-bar ${task.status} draggable`}
                               style={{ 
                                 position: 'absolute',
-                                top: '10px',
+                                top: '50%',
+                                marginTop: '-16px',
                                 left: `${startOffset * cellWidth + 2}px`, 
                                 width: `${Math.max(20, duration * cellWidth - 4)}px`,
                                 zIndex: 10,
@@ -253,11 +258,19 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
         .timeline-scroll-area {
           flex: 1;
+          display: flex;
+          flex-direction: column;
         }
 
-        .timeline-days, .timeline-grid {
+        .timeline-days {
           display: flex;
           position: relative;
+        }
+        
+        .timeline-grid {
+          position: relative;
+          flex: 1;
+          width: 100%;
         }
 
         .day-cell {
@@ -299,7 +312,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
         .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
 
         .gantt-row {
-          height: 52px;
+          min-height: 56px;
         }
 
         .timeline-grid {
@@ -307,6 +320,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
         }
 
         .grid-line {
+          position: absolute;
           width: 50px;
           height: 100%;
           border-right: 1px solid var(--border-light);
@@ -315,7 +329,6 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
         .task-bar {
           position: absolute;
-          top: 10px;
           height: 32px;
           border-radius: 6px;
           display: flex;
