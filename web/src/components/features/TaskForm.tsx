@@ -137,6 +137,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
                   value={period.label || ''} 
                   onChange={(e) => updatePeriod(index, 'label', e.target.value)} 
                   placeholder={`期間 ${index + 1} の名前（例: 配筋、打設など）`}
+                  aria-label={`期間 ${index + 1} の名称`}
                   className="period-label-input"
                 />
               </div>
@@ -147,6 +148,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
                     type="date" 
                     value={period.start} 
                     onChange={(e) => updatePeriod(index, 'start', e.target.value)} 
+                    aria-label={`期間 ${index + 1} の開始日`}
                     required
                   />
                 </div>
@@ -156,6 +158,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
                     type="date" 
                     value={period.end} 
                     onChange={(e) => updatePeriod(index, 'end', e.target.value)} 
+                    aria-label={`期間 ${index + 1} の終了日`}
                     required
                   />
                 </div>
@@ -188,6 +191,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           onChange={(e) => setAssignee(e.target.value)} 
           placeholder="例: 自社・○○基礎"
           list="partners-list"
+          aria-label="担当者または業者を入力"
         />
         <datalist id="partners-list">
           {partners.map(p => (
@@ -229,6 +233,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
                 capture="environment"
                 onChange={handlePhotoChange}
                 style={{ display: 'none' }}
+                aria-label="現場写真をアップロード"
               />
             </label>
           )}

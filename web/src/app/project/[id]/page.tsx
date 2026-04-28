@@ -208,7 +208,7 @@ export default function ProjectDetailPage() {
               </div>
               <div className="form-group">
                 <label>工事種別</label>
-                <select name="type" defaultValue={project.type}>
+                <select name="type" defaultValue={project.type} aria-label="工事種別">
                   <option value="新築">新築</option>
                   <option value="改修">改修・リフォーム</option>
                   <option value="土木">土木</option>
@@ -257,7 +257,7 @@ export default function ProjectDetailPage() {
           <div className="filter-bar glass">
             <div className="filter-group">
               <label>状態:</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="ステータスでフィルタ">
                 <option value="all">すべて</option>
                 <option value="pending">未着手</option>
                 <option value="doing">進行中</option>
@@ -266,7 +266,7 @@ export default function ProjectDetailPage() {
             </div>
             <div className="filter-group">
               <label>業者:</label>
-              <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
+              <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} aria-label="業者でフィルタ">
                 <option value="all">すべての業者</option>
                 {(allAssignees as string[]).map((name: string) => (
                   <option key={name} value={name}>{name}</option>
@@ -275,7 +275,7 @@ export default function ProjectDetailPage() {
             </div>
             <div className="filter-group">
               <label>並び順:</label>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} aria-label="並び順">
                 <option value="manual">手動（カスタム）</option>
                 <option value="date">日付順</option>
                 <option value="assignee">業者順</option>

@@ -24,7 +24,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
   return (
     <div className="filter-bar">
-      <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+      <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="工事種別でフィルタ">
         <option value="all">全種別</option>
         <option value="new">新築</option>
         <option value="renovation">改修</option>
@@ -35,8 +35,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         placeholder="会社名で検索"
         value={companyFilter}
         onChange={e => setCompanyFilter(e.target.value)}
+        aria-label="会社名で検索"
       />
-      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="ステータスでフィルタ">
         <option value="all">全ステータス</option>
         <option value="planning">計画中</option>
         <option value="in_progress">進行中</option>

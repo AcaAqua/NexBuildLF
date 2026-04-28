@@ -44,7 +44,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <main className="main-content">
         <header className="mobile-header glass">
           <span className="logo-text">工程管理 Pro</span>
-          <button className="icon-btn">
+          <button className="icon-btn" aria-label="新規案件を追加">
             <Plus size={24} />
           </button>
         </header>

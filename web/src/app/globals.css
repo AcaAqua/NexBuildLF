@@ -98,8 +98,8 @@ body {
 /* Glassmorphism Utility */
 .glass {
   background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
@@ -124,6 +124,7 @@ body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   gap: 8px;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -226,6 +227,7 @@ body {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 

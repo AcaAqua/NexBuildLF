@@ -84,6 +84,7 @@ export default function Home() {
               onClick={() => setIsModalOpen(true)}
               icon={<Plus size={20} />}
               className="btn-primary add-btn"
+              aria-label="新規現場を追加"
             >
               新規現場
             </IconButton>
@@ -103,7 +104,7 @@ export default function Home() {
               </div>
               <div className="form-group">
                 <label>工事種別</label>
-                <select name="type">
+                <select name="type" aria-label="工事種別を選択">
                   <option value="新築">新築</option>
                   <option value="改修">改修・リフォーム</option>
                   <option value="土木">土木</option>
