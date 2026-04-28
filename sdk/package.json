@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npx -p typescript tsc"
+    "build": "tsc"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
