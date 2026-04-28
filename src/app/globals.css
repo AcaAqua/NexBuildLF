@@ -45,11 +45,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #000000;
-    --foreground: #f5f5f7;
+    --background: #191a1b;
+    --foreground: #ececed;
     
-    --surface: #1c1c1e;
-    --surface-hover: #2c2c2e;
+    --surface: #232426;
+    --surface-hover: #2d2e30;
     
     --primary: #0a84ff;
     --primary-hover: #409eff;
@@ -64,10 +64,10 @@
     --warning: #ffd60a;
     --warning-pastel: #3d3300;
     
-    --border: #38383a;
-    --border-light: #2c2c2e;
+    --border: #363739;
+    --border-light: #2b2d2f;
     
-    --text-main: #f5f5f7;
+    --text-main: #ececed;
     --text-sub: #a1a1a6;
   }
 }

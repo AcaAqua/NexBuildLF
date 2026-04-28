@@ -132,32 +132,41 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                           const duration = isNaN(eDate.getTime()) ? 1 : differenceInDays(eDate, sDate) + 1;
 
                           return (
-                            <motion.div 
-                              key={`${task.id}-p-${pIdx}`}
-                              drag="x"
-                              dragMomentum={false}
-                              dragElastic={0.05}
-                              onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
-                              className={`task-bar ${task.status} draggable`}
+                            <div 
+                              key={`${task.id}-p-${pIdx}-wrap`}
                               style={{ 
                                 position: 'absolute',
                                 top: '50%',
                                 marginTop: '-16px',
                                 left: `${startOffset * cellWidth + 2}px`, 
                                 width: `${Math.max(20, duration * cellWidth - 4)}px`,
-                                zIndex: 10,
-                                backgroundColor: task.color ? task.color : undefined,
-                                color: task.color ? '#ffffff' : undefined,
-                                borderRadius: '16px'
-                              }}
-                              whileDrag={{ 
-                                scale: 1.05, 
-                                boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-                                zIndex: 100
+                                height: '32px',
+                                zIndex: 10
                               }}
                             >
-                              <span className="bar-label">{period.label || task.title}</span>
-                            </motion.div>
+                              <motion.div 
+                                drag="x"
+                                dragMomentum={false}
+                                dragElastic={0.05}
+                                onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
+                                className={`task-bar ${task.status} draggable`}
+                                style={{ 
+                                  position: 'relative',
+                                  width: '100%',
+                                  height: '100%',
+                                  backgroundColor: task.color ? task.color : undefined,
+                                  color: task.color ? '#ffffff' : undefined,
+                                  borderRadius: '16px'
+                                }}
+                                whileDrag={{ 
+                                  scale: 1.05, 
+                                  boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                                  zIndex: 100
+                                }}
+                              >
+                                <span className="bar-label">{period.label || task.title}</span>
+                              </motion.div>
+                            </div>
                           );
                         })}
                       </div>
@@ -312,7 +321,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
         .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
 
         .gantt-row {
-          min-height: 56px;
+          min-height: 64px;
         }
 
         .timeline-grid {
@@ -328,8 +337,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
         }
 
         .task-bar {
-          position: absolute;
-          height: 32px;
+          width: 100%;
+          height: 100%;
           border-radius: 6px;
           display: flex;
           align-items: center;
