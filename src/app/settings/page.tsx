@@ -2,15 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import { Settings, Save, Download, Upload, AlertTriangle } from "lucide-react";
+import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
+import { useTheme } from "next-themes";
 import { storage, Settings as SettingsType } from "@/lib/storage";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsType>({ companyName: '', userName: '', qualifications: '' });
   const [saveMessage, setSaveMessage] = useState('');
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setSettings(storage.getSettings());
+    setMounted(true);
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
@@ -75,6 +79,37 @@ export default function SettingsPage() {
         </header>
 
         <div className="settings-grid">
+          {/* 表示・テーマ設定 */}
+          <section className="settings-card glass">
+            <h2>表示・テーマ設定</h2>
+            <p className="description">アプリの見た目（ライトモード・ダークモード）を変更します。</p>
+            {mounted && (
+              <div className="theme-toggle-group">
+                <button 
+                  className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+                  onClick={() => setTheme('light')}
+                >
+                  <Sun size={18} />
+                  ライト
+                </button>
+                <button 
+                  className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+                  onClick={() => setTheme('dark')}
+                >
+                  <Moon size={18} />
+                  ダーク
+                </button>
+                <button 
+                  className={`theme-btn ${theme === 'system' ? 'active' : ''}`}
+                  onClick={() => setTheme('system')}
+                >
+                  <Monitor size={18} />
+                  端末に合わせる
+                </button>
+              </div>
+            )}
+          </section>
+
           {/* プロファイル設定 */}
           <section className="settings-card glass">
             <h2>担当者プロファイル</h2>
@@ -315,6 +350,41 @@ export default function SettingsPage() {
 
         .btn-danger:hover {
           background: #ff7875;
+        }
+
+        .theme-toggle-group {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .theme-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 20px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-light);
+          background: var(--surface);
+          color: var(--text-main);
+          font-weight: 600;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex: 1;
+          min-width: 140px;
+        }
+
+        .theme-btn:hover {
+          background: var(--surface-hover);
+          border-color: var(--border);
+        }
+
+        .theme-btn.active {
+          background: var(--primary-pastel);
+          border-color: var(--primary);
+          color: var(--primary);
         }
 
         @keyframes fadeIn {
