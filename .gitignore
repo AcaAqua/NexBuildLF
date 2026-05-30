@@ -5,6 +5,7 @@ jspm_packages/
 # Next.js build
 .next/
 out/
+tsconfig.tsbuildinfo
 
 # env
 .env
@@ -31,6 +32,7 @@ build
 # vscode
 .vscode/*
 !.vscode/settings.json
+android/.idea/
 
 # OS files
 .DS_Store
