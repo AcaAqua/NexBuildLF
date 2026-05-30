@@ -16,6 +16,16 @@ interface GanttChartProps {
   onDateClick?: (date: string) => void;
 }
 
+const getTaskPeriods = (task: Task) => {
+  if (task.periods && task.periods.length > 0) {
+    return task.periods;
+  }
+
+  const start = task.startDate || task.start_date;
+  const end = task.endDate || task.end_date || start;
+  return start ? [{ start, end }] : [];
+};
+
 export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, onReorder, onDateClick }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [uiScale, setUiScale] = React.useState<'sm' | 'md' | 'lg'>('md');
@@ -32,7 +42,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
     let start = addDays(today, -3); 
 
     if (tasks && tasks.length > 0) {
-      const allStarts = tasks.flatMap(t => t.periods.map(p => parseISO(p.start))).filter(d => !isNaN(d.getTime()));
+      const allStarts = tasks.flatMap(t => getTaskPeriods(t).map(p => parseISO(p.start))).filter(d => !isNaN(d.getTime()));
       if (allStarts.length > 0) {
         const earliestTask = min(allStarts);
         if (earliestTask < start) start = startOfDay(earliestTask);
@@ -52,7 +62,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
     const daysMoved = Math.round(offset / cellWidth);
     if (daysMoved === 0) return;
 
-    const updatedPeriods = [...task.periods];
+    const updatedPeriods = [...getTaskPeriods(task)];
     const period = updatedPeriods[periodIndex];
     
     const newStart = addDays(parseISO(period.start), daysMoved);
@@ -135,7 +145,14 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                       </div>
                     </div>
                     <div className="timeline-scroll-area">
-                      <div className="timeline-grid">
+                      <div
+                        className="timeline-grid"
+                        style={{
+                          width: `calc(var(--gantt-cell-width) * ${days.length})`,
+                          minWidth: `calc(var(--gantt-cell-width) * ${days.length})`,
+                          height: 'var(--gantt-row-height)',
+                        }}
+                      >
                         {/* Grid background lines */}
                         {days.map((day, i) => (
                           <div 
@@ -146,7 +163,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                         ))}
                         
                         {/* Multiple Task Bars (Periods) */}
-                        {task.periods.map((period, pIdx) => {
+                        {getTaskPeriods(task).map((period, pIdx) => {
                           const sDate = startOfDay(parseISO(period.start));
                           const eDate = startOfDay(parseISO(period.end));
                           if (isNaN(sDate.getTime())) return null;
@@ -171,7 +188,19 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                 className={`task-bar ${task.status} draggable`}
                                 style={{ 
                                   backgroundColor: task.color ? task.color : undefined,
-                                  color: task.color ? '#ffffff' : undefined,
+                                  color: task.color ? '#1d2736' : undefined,
+                                  width: '100%',
+                                  height: '100%',
+                                  borderRadius: '16px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '0 12px',
+                                  fontSize: '12px',
+                                  fontWeight: 800,
+                                  boxShadow: 'var(--shadow-sm)',
+                                  position: 'relative',
+                                  cursor: 'grab',
+                                  overflow: 'hidden',
                                 }}
                                 whileDrag={{ 
                                   scale: 1.05, 
@@ -212,7 +241,16 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           width: 100%;
         }
 
-        .gantt-header, .gantt-row {
+        .gantt-header {
+          display: flex;
+          border-bottom: 1px solid var(--border-light);
+          width: 100%;
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
+
+        .gantt-row {
           display: flex;
           border-bottom: 1px solid var(--border-light);
           width: 100%;
@@ -239,6 +277,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           background: var(--background);
           justify-content: space-between;
           height: 60px;
+          position: sticky;
+          left: 0;
+          z-index: 60;
         }
 
         .task-name-col.clickable {
@@ -380,6 +421,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
         .task-bar.pending { background: #d2d2d7; color: #86868b; }
         .task-bar.doing { background: var(--primary-pastel); color: var(--primary); border: 1px solid var(--primary); }
         .task-bar.done { background: var(--success-pastel); color: var(--success); border: 1px solid var(--success); }
+        .task-bar.hold { background: var(--warning-pastel); color: var(--warning); border: 1px solid var(--warning); }
 
         .bar-label {
           white-space: nowrap;

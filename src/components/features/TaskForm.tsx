@@ -259,14 +259,14 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       <div className="form-group">
         <label>ステータス</label>
         <div className="status-toggle">
-          {(['pending', 'doing', 'done'] as const).map((s) => (
+          {(['pending', 'doing', 'done', 'hold'] as const).map((s) => (
             <button
               key={s}
               type="button"
               className={`status-btn ${status === s ? 'active' : ''} ${s}`}
               onClick={() => setStatus(s)}
             >
-              {s === 'done' ? '完了' : s === 'doing' ? '進行中' : '未着手'}
+              {s === 'done' ? '完了' : s === 'doing' ? '進行中' : s === 'hold' ? '保留' : '未着手'}
             </button>
           ))}
         </div>
@@ -336,7 +336,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
 
         .status-toggle {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           background: var(--surface-hover);
           padding: 4px;
           border-radius: var(--radius-md);
@@ -363,6 +363,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
 
         .status-btn.done.active { color: var(--success); }
         .status-btn.doing.active { color: var(--primary); }
+        .status-btn.hold.active { color: var(--warning); }
 
         .periods-section {
           display: flex;

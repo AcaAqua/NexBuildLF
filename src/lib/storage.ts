@@ -13,8 +13,12 @@ export interface Task {
   id: string;
   title: string;
   periods: Period[];
+  startDate?: string;
+  endDate?: string;
+  start_date?: string;
+  end_date?: string;
   assignee: string;
-  status: 'pending' | 'doing' | 'done';
+  status: 'pending' | 'doing' | 'done' | 'hold';
   color?: string;
 }
 
@@ -50,8 +54,13 @@ export const storage = {
   // 全プロジェクト取得
   getProjects: (): Project[] => {
     if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('Failed to parse projects from localStorage', e);
+      return [];
+    }
   },
 
   // プロジェクト保存・更新
@@ -150,10 +159,14 @@ export const storage = {
   // 設定関連
   getSettings: (): Settings => {
     if (typeof window === 'undefined') return { companyName: '', userName: '', qualifications: '', uiScale: 'md' };
-    const data = localStorage.getItem('kouteikanri_settings');
-    if (data) {
-      const parsed = JSON.parse(data);
-      return { ...parsed, uiScale: parsed.uiScale || 'md' };
+    try {
+      const data = localStorage.getItem('kouteikanri_settings');
+      if (data) {
+        const parsed = JSON.parse(data);
+        return { ...parsed, uiScale: parsed.uiScale || 'md' };
+      }
+    } catch (e) {
+      console.error('Failed to parse settings from localStorage', e);
     }
     return { companyName: '', userName: '', qualifications: '', uiScale: 'md' };
   },

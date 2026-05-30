@@ -4,13 +4,37 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
-import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
 import { storage, Project, Task } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
 import { Suspense } from 'react';
+
+const taskStatusLabels: Record<Task['status'], string> = {
+  pending: '未着手',
+  doing: '進行中',
+  done: '完了',
+  hold: '保留',
+};
+
+const getTaskPeriods = (task: Task) => {
+  if (task.periods && task.periods.length > 0) return task.periods;
+  const start = task.startDate || task.start_date;
+  const end = task.endDate || task.end_date || start;
+  return start ? [{ start, end }] : [];
+};
+
+const getTaskDateRange = (task: Task) => {
+  const periods = getTaskPeriods(task);
+  const first = periods[0];
+  const last = periods[periods.length - 1];
+  return {
+    start: first?.start || '',
+    end: last?.end || first?.end || '',
+  };
+};
 
 function ProjectDetailContent() {
   const searchParams = useSearchParams();
@@ -21,7 +45,6 @@ function ProjectDetailContent() {
   // モーダル・表示管理
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
-  const [viewMode, setViewMode] = useState<'gantt' | 'list'>('gantt');
 
   // フィルター・ソート管理
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -85,8 +108,8 @@ function ProjectDetailContent() {
     // ソート
     if (sortBy === 'date') {
       filtered.sort((a, b) => {
-        const aStart = a.periods[0]?.start || '';
-        const bStart = b.periods[0]?.start || '';
+        const aStart = getTaskDateRange(a).start;
+        const bStart = getTaskDateRange(b).start;
         return aStart.localeCompare(bStart);
       });
     } else if (sortBy === 'assignee') {
@@ -135,6 +158,35 @@ function ProjectDetailContent() {
     setIsModalOpen(false);
   };
 
+  const saveTasks = (tasks: Task[]) => {
+    if (!project) return;
+    const updated: Project = { ...project, tasks };
+    storage.saveProject(updated);
+    setProject(updated);
+  };
+
+  const handleUpdateTaskStatus = (task: Task, status: Task['status']) => {
+    if (!project) return;
+    saveTasks(project.tasks.map(t => t.id === task.id ? { ...t, status } : t));
+  };
+
+  const handleDuplicateTask = (task: Task) => {
+    if (!project) return;
+    const duplicated: Task = {
+      ...task,
+      id: `task-${Date.now()}`,
+      title: `${task.title} コピー`,
+      periods: getTaskPeriods(task).map(period => ({ ...period })),
+    };
+    saveTasks([...project.tasks, duplicated]);
+  };
+
+  const handleDeleteTask = (task: Task) => {
+    if (!project) return;
+    if (!window.confirm(`「${task.title}」を削除しますか？`)) return;
+    saveTasks(project.tasks.filter(t => t.id !== task.id));
+  };
+
   const handleReorderTasks = (newTasks: Task[]) => {
     if (!project) return;
     const updated: Project = { ...project, tasks: newTasks };
@@ -165,8 +217,7 @@ function ProjectDetailContent() {
   if (!project) return null;
 
   return (
-    <MainLayout>
-      <div className="project-detail">
+    <div className="project-detail">
         <header className="detail-header">
           <div className="header-left">
             <IconButton icon={<ChevronLeft size={24} />} className="btn-outline back-btn" onClick={() => window.history.back()} />
@@ -235,19 +286,9 @@ function ProjectDetailContent() {
 
         <section className="content-section">
           <div className="section-header">
-            <div className="view-toggle">
-              <button 
-                className={`toggle-btn ${viewMode === 'gantt' ? 'active' : ''}`}
-                onClick={() => setViewMode('gantt')}
-              >
-                工程表
-              </button>
-              <button 
-                className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                リスト
-              </button>
+            <div className="section-title">
+              <h2>工程表</h2>
+              <span>工程バーを中心に日程と担当を確認</span>
             </div>
             
             <button className="btn btn-primary btn-sm" onClick={() => { setEditingTask(undefined); setIsModalOpen(true); }}>
@@ -264,6 +305,7 @@ function ProjectDetailContent() {
                 <option value="pending">未着手</option>
                 <option value="doing">進行中</option>
                 <option value="done">完了</option>
+                <option value="hold">保留</option>
               </select>
             </div>
             <div className="filter-group">
@@ -290,54 +332,80 @@ function ProjectDetailContent() {
             ) }
           </div>
           
-          {viewMode === 'gantt' ? (
-            <div className="chart-wrapper">
-              <GanttChart 
-                tasks={displayTasks} 
-                dailyMemos={project.dailyMemos}
-                onUpdate={handleSaveTask}
-                onEdit={handleEditTask}
-                onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
-                onDateClick={handleDateClick}
-              />
+          <div className="chart-wrapper gantt-primary">
+            <GanttChart
+              tasks={displayTasks}
+              dailyMemos={project.dailyMemos}
+              onUpdate={handleSaveTask}
+              onEdit={handleEditTask}
+              onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
+              onDateClick={handleDateClick}
+            />
+          </div>
+
+          <div className="task-list-panel">
+            <div className="task-list-header">
+              <span>工程名</span>
+              <span>担当者</span>
+              <span>開始日</span>
+              <span>終了日</span>
+              <span>状態</span>
+              <span>操作</span>
             </div>
-          ) : (
-            <div className="tasks-container">
-              {displayTasks.length === 0 ? (
-                <div className="empty-tasks">該当する工程が見つかりません。</div>
-              ) : (
-                displayTasks.map((task: Task) => (
-                  <div key={task.id} className="task-item" onClick={() => handleEditTask(task)}>
-                    <div className="task-info">
-                      <div className="task-header">
-                        <div className="color-dot" style={{ backgroundColor: task.color || '#e5e5ea' }} />
-                        <div>
-                          <h4>{task.title}</h4>
-                          <span className="assignee-sub">{task.assignee}</span>
-                        </div>
-                      </div>
-                      <div className="periods-list-compact">
-                        {task.periods.map((p: any, i: number) => (
-                          <div key={i} className="period-badge-mini">
-                            {p.label || `第${i + 1}期`}: {p.start} 〜 {p.end}
+            {displayTasks.length === 0 ? (
+              <div className="empty-tasks">該当する工程が見つかりません。</div>
+            ) : (
+              displayTasks.map((task: Task) => {
+                const range = getTaskDateRange(task);
+                return (
+                  <div key={task.id} className="task-list-row" onClick={() => handleEditTask(task)}>
+                    <div className="task-name-cell">
+                      <div className="color-dot" style={{ backgroundColor: task.color || '#e5e5ea' }} />
+                      <div>
+                        <h4>{task.title}</h4>
+                        {(task.memo || task.photo) && (
+                          <div className="task-extras-inline">
+                            {task.memo && <span><FileText size={12} />メモ</span>}
+                            {task.photo && <span><Camera size={12} />写真</span>}
                           </div>
-                        ))}
+                        )}
                       </div>
-                      {(task.memo || task.photo) && (
-                        <div className="task-extras">
-                          {task.memo && <div className="task-memo"><FileText size={12} /> {task.memo}</div>}
-                          {task.photo && <div className="task-photo-badge"><Camera size={12} /> 写真あり</div>}
-                        </div>
-                      )}
                     </div>
-                    <div className={`task-status ${task.status}`}>
-                      {task.status === 'done' ? '完了' : task.status === 'doing' ? '進行中' : '未着手'}
+                    <div className="task-text-cell">{task.assignee || '未設定'}</div>
+                    <div className="task-text-cell">{range.start || '-'}</div>
+                    <div className="task-text-cell">{range.end || '-'}</div>
+                    <div>
+                      <select
+                        className={`status-select ${task.status}`}
+                        value={task.status}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleUpdateTaskStatus(task, e.target.value as Task['status'])}
+                        aria-label={`${task.title} の状態`}
+                      >
+                        {Object.entries(taskStatusLabels).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="task-row-actions" onClick={(e) => e.stopPropagation()}>
+                      <button type="button" className="icon-action" onClick={() => handleEditTask(task)} title="編集">
+                        <Pencil size={16} />
+                      </button>
+                      <button type="button" className="icon-action" onClick={() => handleDuplicateTask(task)} title="複製">
+                        <Copy size={16} />
+                      </button>
+                      <button type="button" className="icon-action hold-action" onClick={() => handleUpdateTaskStatus(task, 'hold')} title="保留">
+                        <PauseCircle size={16} />
+                      </button>
+                      <button type="button" className="icon-action danger-action" onClick={() => handleDeleteTask(task)} title="削除">
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </section>
 
         <Modal 
@@ -373,7 +441,6 @@ function ProjectDetailContent() {
             </div>
           </div>
         </Modal>
-      </div>
 
       <style jsx>{`
         .project-detail {
@@ -512,7 +579,19 @@ function ProjectDetailContent() {
         .content-section {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 16px;
+        }
+
+        .section-title {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .section-title span {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-sub);
         }
 
         .view-toggle {
@@ -579,6 +658,178 @@ function ProjectDetailContent() {
           gap: 12px;
         }
 
+        .chart-wrapper {
+          min-height: 360px;
+        }
+
+        .chart-wrapper :global(.gantt-wrapper) {
+          min-height: 360px;
+          border-radius: var(--radius-md);
+        }
+
+        .chart-wrapper :global(.gantt-container) {
+          min-height: 360px;
+        }
+
+        .chart-wrapper :global(.task-bar-container) {
+          height: 34px;
+        }
+
+        .task-list-panel {
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+        }
+
+        .task-list-header,
+        .task-list-row {
+          display: grid;
+          grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) 120px 120px 120px 168px;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .task-list-header {
+          min-height: 40px;
+          padding: 0 16px;
+          background: var(--background);
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 800;
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .task-list-row {
+          min-height: 50px;
+          padding: 6px 16px;
+          border-bottom: 1px solid var(--border-light);
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .task-list-row:last-child {
+          border-bottom: none;
+        }
+
+        .task-list-row:hover {
+          background: var(--surface-hover);
+        }
+
+        .task-name-cell {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .task-name-cell h4 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 800;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .task-text-cell {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-main);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .task-extras-inline {
+          display: flex;
+          gap: 8px;
+          margin-top: 3px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-sub);
+        }
+
+        .task-extras-inline span {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+
+        .status-select {
+          width: 100%;
+          height: 34px;
+          border-radius: 9px;
+          border: 1px solid var(--border-light);
+          background: var(--surface);
+          font-size: 12px;
+          font-weight: 800;
+          padding: 0 10px;
+          outline: none;
+        }
+
+        .status-select.pending {
+          color: var(--text-sub);
+          background: var(--surface-hover);
+        }
+
+        .status-select.doing {
+          color: var(--primary);
+          background: var(--primary-pastel);
+          border-color: var(--primary);
+        }
+
+        .status-select.done {
+          color: var(--success);
+          background: var(--success-pastel);
+          border-color: var(--success);
+        }
+
+        .status-select.hold {
+          color: var(--warning);
+          background: var(--warning-pastel);
+          border-color: var(--warning);
+        }
+
+        .task-row-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 6px;
+        }
+
+        .icon-action {
+          width: 34px;
+          height: 34px;
+          border: 1px solid var(--border-light);
+          border-radius: 9px;
+          background: var(--surface);
+          color: var(--text-sub);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .icon-action:hover {
+          color: var(--primary);
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+        }
+
+        .hold-action:hover {
+          color: var(--warning);
+          border-color: var(--warning);
+          background: var(--warning-pastel);
+        }
+
+        .danger-action:hover {
+          color: var(--danger);
+          border-color: var(--danger);
+          background: var(--danger-pastel);
+        }
+
         .task-item {
           background: var(--surface);
           padding: 16px 20px;
@@ -617,6 +868,7 @@ function ProjectDetailContent() {
         .task-status.pending { background: var(--border-light); color: var(--text-sub); }
         .task-status.doing { background: var(--primary-pastel); color: var(--primary); }
         .task-status.done { background: var(--success-pastel); color: var(--success); }
+        .task-status.hold { background: var(--warning-pastel); color: var(--warning); }
 
         .empty-tasks {
           padding: 48px;
@@ -730,14 +982,16 @@ function ProjectDetailContent() {
           display: block;
         }
       `}</style>
-    </MainLayout>
+    </div>
   );
 }
 
 export default function ProjectDetailPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-      <ProjectDetailContent />
-    </Suspense>
+    <MainLayout>
+      <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+        <ProjectDetailContent />
+      </Suspense>
+    </MainLayout>
   );
 }

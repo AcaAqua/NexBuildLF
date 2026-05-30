@@ -81,7 +81,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           width: 100%;
           display: flex;
           justify-content: center;
-          pointer-events: none;
+          pointer-events: auto;
         }
 
         .modal-content {
@@ -90,6 +90,8 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           background: var(--surface);
           border-radius: var(--radius-xl) var(--radius-xl) 0 0;
           pointer-events: auto;
+          position: relative;
+          z-index: 1;
           display: flex;
           flex-direction: column;
           max-height: 90vh;

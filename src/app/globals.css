@@ -30,8 +30,8 @@
   --header-height: 60px;
   --navbar-height: 64px;
   --gantt-cell-width: 50px;
-  --gantt-row-height: 64px;
-  --gantt-sidebar-width: 160px;
+  --gantt-row-height: 48px;
+  --gantt-sidebar-width: 190px;
 
   /* Default Size Variables (md) */
   --font-size-base: 14px;
@@ -65,8 +65,8 @@ body.ui-size-sm {
   --header-height: 50px;
   --navbar-height: 54px;
   --gantt-cell-width: 36px;
-  --gantt-row-height: 52px;
-  --gantt-sidebar-width: 120px;
+  --gantt-row-height: 44px;
+  --gantt-sidebar-width: 160px;
 }
 
 body.ui-size-lg {
@@ -80,8 +80,8 @@ body.ui-size-lg {
   --header-height: 70px;
   --navbar-height: 74px;
   --gantt-cell-width: 64px;
-  --gantt-row-height: 80px;
-  --gantt-sidebar-width: 200px;
+  --gantt-row-height: 50px;
+  --gantt-sidebar-width: 220px;
 }
 
 :root.dark, .dark {
@@ -296,4 +296,3 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-pastel);
 }
-
