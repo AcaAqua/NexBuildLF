@@ -84,16 +84,18 @@ export default function ProjectCard({ id, title, type, status, location, progres
 
       <style jsx>{`
         .project-card-container {
-          background: var(--surface);
+          background: #ffffff;
           border-radius: var(--radius-lg);
-          border: 1px solid var(--border-light);
-          padding: 24px;
+          border: 1px solid #d9e7f8;
+          padding: 28px;
+          padding-right: 168px;
+          min-height: 176px;
           display: flex;
           align-items: center;
           gap: 16px;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: var(--shadow-sm);
+          box-shadow: 0 16px 42px rgba(0, 71, 160, 0.1);
         }
 
         .project-card-container:hover {
@@ -103,12 +105,14 @@ export default function ProjectCard({ id, title, type, status, location, progres
 
         .card-content {
           flex: 1;
+          min-width: 0;
         }
 
         .card-header {
           display: flex;
-          justify-content: space-between;
+          flex-direction: column;
           align-items: flex-start;
+          gap: 8px;
           margin-bottom: 16px;
         }
 
@@ -128,6 +132,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
           margin: 0;
           color: var(--text-main);
           letter-spacing: -0.3px;
+          line-height: 1.35;
         }
 
         .status-badge {
@@ -135,10 +140,14 @@ export default function ProjectCard({ id, title, type, status, location, progres
           font-weight: 800;
           padding: 4px 10px;
           border-radius: 20px;
+          white-space: nowrap;
+          order: -1;
+          align-self: flex-start;
         }
 
         .card-meta {
           display: flex;
+          flex-wrap: wrap;
           gap: 16px;
           margin-bottom: 20px;
         }
@@ -183,6 +192,13 @@ export default function ProjectCard({ id, title, type, status, location, progres
         .card-action {
           color: var(--border);
           transition: color 0.2s;
+        }
+
+        @media (max-width: 640px) {
+          .project-card-container {
+            padding-right: 24px;
+            padding-top: 72px;
+          }
         }
 
         .project-card-container:hover .card-action {

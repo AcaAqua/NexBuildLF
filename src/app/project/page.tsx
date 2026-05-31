@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
-import { storage, Project, Task } from "@/lib/storage";
+import { storage, Project, Task, TaskLog } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
@@ -17,6 +17,13 @@ const taskStatusLabels: Record<Task['status'], string> = {
   doing: '進行中',
   done: '完了',
   hold: '保留',
+};
+
+const taskLogTypeLabels: Record<TaskLog['type'], string> = {
+  memo: 'メモ',
+  photo: '写真',
+  change: '変更',
+  handoff: '申し送り',
 };
 
 const getTaskPeriods = (task: Task) => {
@@ -58,6 +65,12 @@ function ProjectDetailContent() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [dateMemo, setDateMemo] = useState('');
+
+  // 工程記録管理
+  const [logPanelTask, setLogPanelTask] = useState<Task | null>(null);
+  const [logPanelDate, setLogPanelDate] = useState<string>('');
+  const [logTitle, setLogTitle] = useState('');
+  const [logBody, setLogBody] = useState('');
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -156,6 +169,46 @@ function ProjectDetailContent() {
     storage.saveProject(updatedProject);
     loadData();
     setIsModalOpen(false);
+  };
+
+  const getTaskLogs = (taskId?: string, logDate?: string) => {
+    if (!project) return [];
+    return (project.taskLogs || [])
+      .filter(log => (!taskId || log.taskId === taskId) && (!logDate || log.logDate === logDate))
+      .sort((a, b) => a.logDate.localeCompare(b.logDate) || a.createdAt.localeCompare(b.createdAt));
+  };
+
+  const handleOpenTaskLog = (task: Task, date: string) => {
+    setLogPanelTask(task);
+    setLogPanelDate(date);
+    setLogTitle('');
+    setLogBody('');
+  };
+
+  const handleSaveTaskLog = () => {
+    if (!project || !logPanelTask || !logBody.trim()) return;
+
+    const now = new Date().toISOString();
+    const newLog: TaskLog = {
+      id: `log-${Date.now()}`,
+      projectId: project.id,
+      taskId: logPanelTask.id,
+      logDate: logPanelDate,
+      type: 'memo',
+      title: logTitle.trim() || 'メモ',
+      body: logBody.trim(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updated: Project = {
+      ...project,
+      taskLogs: [...(project.taskLogs || []), newLog],
+    };
+    storage.saveProject(updated);
+    setProject(updated);
+    setLogTitle('');
+    setLogBody('');
   };
 
   const saveTasks = (tasks: Task[]) => {
@@ -336,10 +389,12 @@ function ProjectDetailContent() {
             <GanttChart
               tasks={displayTasks}
               dailyMemos={project.dailyMemos}
+              taskLogs={project.taskLogs}
               onUpdate={handleSaveTask}
               onEdit={handleEditTask}
               onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
               onDateClick={handleDateClick}
+              onOpenTaskLog={handleOpenTaskLog}
             />
           </div>
 
@@ -350,6 +405,7 @@ function ProjectDetailContent() {
               <span>開始日</span>
               <span>終了日</span>
               <span>状態</span>
+              <span>記録</span>
               <span>操作</span>
             </div>
             {displayTasks.length === 0 ? (
@@ -357,6 +413,7 @@ function ProjectDetailContent() {
             ) : (
               displayTasks.map((task: Task) => {
                 const range = getTaskDateRange(task);
+                const taskLogCount = getTaskLogs(task.id).length;
                 return (
                   <div key={task.id} className="task-list-row" onClick={() => handleEditTask(task)}>
                     <div className="task-name-cell">
@@ -386,6 +443,16 @@ function ProjectDetailContent() {
                           <option key={value} value={value}>{label}</option>
                         ))}
                       </select>
+                    </div>
+                    <div className="task-log-action-cell" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="task-log-action"
+                        onClick={() => handleOpenTaskLog(task, range.start || new Date().toISOString().slice(0, 10))}
+                      >
+                        <FileText size={14} />
+                        {taskLogCount > 0 ? `記録 ${taskLogCount}` : '記録'}
+                      </button>
                     </div>
                     <div className="task-row-actions" onClick={(e) => e.stopPropagation()}>
                       <button type="button" className="icon-action" onClick={() => handleEditTask(task)} title="編集">
@@ -440,6 +507,66 @@ function ProjectDetailContent() {
               <button type="button" className="btn btn-primary" onClick={handleSaveDailyMemo}>保存する</button>
             </div>
           </div>
+        </Modal>
+
+        <Modal
+          isOpen={!!logPanelTask}
+          onClose={() => setLogPanelTask(null)}
+          title="工程記録"
+        >
+          {logPanelTask && (
+            <div className="task-log-panel">
+              <div className="task-log-summary">
+                <div>
+                  <h3>{logPanelTask.title}</h3>
+                  <p>{logPanelDate}</p>
+                </div>
+                <strong>記録 {getTaskLogs(logPanelTask.id).length}件</strong>
+              </div>
+
+              <div className="task-log-form">
+                <div className="form-group">
+                  <label>記録タイトル</label>
+                  <input
+                    type="text"
+                    value={logTitle}
+                    onChange={(e) => setLogTitle(e.target.value)}
+                    placeholder="例: 雨天対応"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>メモ</label>
+                  <textarea
+                    value={logBody}
+                    onChange={(e) => setLogBody(e.target.value)}
+                    placeholder="現場の状況、変更理由、申し送りを記録"
+                    rows={4}
+                    className="form-textarea"
+                  />
+                </div>
+                <button type="button" className="btn btn-primary" onClick={handleSaveTaskLog}>
+                  <Plus size={16} /> 記録追加
+                </button>
+              </div>
+
+              <div className="task-log-list">
+                {getTaskLogs(logPanelTask.id).length === 0 ? (
+                  <div className="empty-log">この工程の記録はまだありません。</div>
+                ) : (
+                  getTaskLogs(logPanelTask.id).map((log) => (
+                    <article key={log.id} className="task-log-item">
+                      <div className="task-log-date">{formatLogDate(log.logDate)}</div>
+                      <div className="task-log-card">
+                        <span className={`task-log-type ${log.type}`}>{taskLogTypeLabels[log.type]}</span>
+                        <h4>{log.title}</h4>
+                        <p>{log.body}</p>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </Modal>
 
       <style jsx>{`
@@ -672,7 +799,7 @@ function ProjectDetailContent() {
         }
 
         .chart-wrapper :global(.task-bar-container) {
-          height: 34px;
+          height: 40px;
         }
 
         .task-list-panel {
@@ -685,7 +812,7 @@ function ProjectDetailContent() {
         .task-list-header,
         .task-list-row {
           display: grid;
-          grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) 120px 120px 120px 168px;
+          grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) 120px 120px 120px 104px 168px;
           align-items: center;
           gap: 12px;
         }
@@ -796,6 +923,34 @@ function ProjectDetailContent() {
           align-items: center;
           justify-content: flex-end;
           gap: 6px;
+        }
+
+        .task-log-action-cell {
+          display: flex;
+          justify-content: flex-start;
+        }
+
+        .task-log-action {
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid var(--primary);
+          border-radius: 9px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+
+        .task-log-action:hover {
+          background: var(--primary);
+          color: var(--text-on-primary);
         }
 
         .icon-action {
@@ -929,13 +1084,20 @@ function ProjectDetailContent() {
           display: flex;
           flex-wrap: wrap;
           gap: 16px;
-          padding: 12px 20px;
-          background: rgba(255, 255, 255, 0.7);
+          padding: 14px 20px;
+          background: var(--surface);
           backdrop-filter: blur(10px);
           border-radius: var(--radius-md);
           border: 1px solid var(--border-light);
+          box-shadow: var(--shadow-sm);
           align-items: center;
           margin-bottom: 8px;
+        }
+
+        :global(.dark) .filter-bar {
+          background: rgba(32, 34, 38, 0.92);
+          border-color: rgba(255, 255, 255, 0.12);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--shadow-sm);
         }
 
         .filter-group {
@@ -981,9 +1143,140 @@ function ProjectDetailContent() {
           opacity: 0.8;
           display: block;
         }
+
+        .task-log-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .task-log-summary {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          border-radius: var(--radius-md);
+          background: var(--surface-hover);
+          border: 1px solid var(--border-light);
+        }
+
+        .task-log-summary h3 {
+          margin: 0 0 4px;
+          font-size: 18px;
+          font-weight: 800;
+        }
+
+        .task-log-summary p {
+          margin: 0;
+          color: var(--text-sub);
+          font-weight: 700;
+          font-size: 13px;
+        }
+
+        .task-log-summary strong {
+          color: var(--primary);
+          white-space: nowrap;
+          font-size: 13px;
+        }
+
+        .task-log-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .task-log-form .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .task-log-form label {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--text-sub);
+        }
+
+        .task-log-form input,
+        .task-log-form textarea {
+          width: 100%;
+          min-height: 44px;
+          font-size: 15px;
+        }
+
+        .task-log-form .btn {
+          min-height: 48px;
+          font-size: 15px;
+        }
+
+        .task-log-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .task-log-item {
+          display: grid;
+          grid-template-columns: 64px 1fr;
+          gap: 12px;
+          align-items: flex-start;
+        }
+
+        .task-log-date {
+          color: var(--text-sub);
+          font-size: 13px;
+          font-weight: 800;
+          padding-top: 10px;
+          text-align: right;
+        }
+
+        .task-log-card {
+          padding: 14px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-light);
+          background: var(--surface);
+        }
+
+        .task-log-type {
+          display: inline-flex;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          font-size: 11px;
+          font-weight: 900;
+          margin-bottom: 8px;
+        }
+
+        .task-log-card h4 {
+          margin: 0 0 6px;
+          font-size: 15px;
+          font-weight: 800;
+        }
+
+        .task-log-card p {
+          margin: 0;
+          color: var(--text-main);
+          white-space: pre-wrap;
+          line-height: 1.6;
+        }
+
+        .empty-log {
+          padding: 24px;
+          text-align: center;
+          color: var(--text-sub);
+          border: 1px dashed var(--border);
+          border-radius: var(--radius-md);
+        }
       `}</style>
     </div>
   );
+}
+
+function formatLogDate(date: string) {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}/${Number(day)}`;
 }
 
 export default function ProjectDetailPage() {
