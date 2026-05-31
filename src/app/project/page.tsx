@@ -71,6 +71,8 @@ function ProjectDetailContent() {
   const [logPanelDate, setLogPanelDate] = useState<string>('');
   const [logTitle, setLogTitle] = useState('');
   const [logBody, setLogBody] = useState('');
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
+  const [timelineTaskId, setTimelineTaskId] = useState<string>('');
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -139,6 +141,24 @@ function ProjectDetailContent() {
     return Array.from(new Set(names));
   }, [project]);
 
+  const taskById = useMemo(() => {
+    if (!project) return new Map<string, Task>();
+    return new Map(project.tasks.map(task => [task.id, task]));
+  }, [project]);
+
+  const timelineLogs = useMemo(() => {
+    if (!project) return [];
+    return [...(project.taskLogs || [])]
+      .filter(log => timelineFilter === 'all' || !timelineTaskId || log.taskId === timelineTaskId)
+      .sort((a, b) => {
+        const bTime = b.createdAt || b.logDate;
+        const aTime = a.createdAt || a.logDate;
+        return bTime.localeCompare(aTime);
+      });
+  }, [project, timelineFilter, timelineTaskId]);
+
+  const selectedTimelineTask = timelineTaskId ? taskById.get(timelineTaskId) : undefined;
+
   const handleOpenAddModal = () => {
     setEditingTask(undefined);
     setIsModalOpen(true);
@@ -183,6 +203,12 @@ function ProjectDetailContent() {
     setLogPanelDate(date);
     setLogTitle('');
     setLogBody('');
+  };
+
+  const handleViewTaskHistory = (task: Task) => {
+    setTimelineTaskId(task.id);
+    setTimelineFilter('selected');
+    setLogPanelTask(null);
   };
 
   const handleSaveTaskLog = () => {
@@ -473,6 +499,68 @@ function ProjectDetailContent() {
               })
             )}
           </div>
+
+          <div className="task-log-timeline-panel">
+            <div className="timeline-panel-header">
+              <div>
+                <h3>工程記録タイムライン</h3>
+                <p>
+                  {timelineFilter === 'selected' && selectedTimelineTask
+                    ? `${selectedTimelineTask.title} の記録`
+                    : '全工程の記録'}
+                </p>
+              </div>
+              <div className="timeline-panel-actions">
+                <span className="timeline-count">記録 {timelineLogs.length}件</span>
+                <div className="timeline-filter">
+                  <button
+                    type="button"
+                    className={timelineFilter === 'all' ? 'active' : ''}
+                    onClick={() => setTimelineFilter('all')}
+                  >
+                    全体
+                  </button>
+                  <button
+                    type="button"
+                    className={timelineFilter === 'selected' ? 'active' : ''}
+                    disabled={!timelineTaskId}
+                    onClick={() => setTimelineFilter('selected')}
+                  >
+                    選択工程のみ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {timelineLogs.length === 0 ? (
+              <div className="timeline-empty">
+                {timelineFilter === 'selected' ? '選択中の工程記録はまだありません。' : '工程記録はまだありません。'}
+              </div>
+            ) : (
+              <div className="task-log-timeline-list">
+                {timelineLogs.map((log) => {
+                  const task = taskById.get(log.taskId);
+                  const taskLogCount = getTaskLogs(log.taskId).length;
+                  return (
+                    <article key={log.id} className="timeline-log-item">
+                      <div className="timeline-date">
+                        <strong>{formatLogDateFull(log.logDate)}</strong>
+                        <span>{formatLogCreatedAt(log.createdAt)}</span>
+                      </div>
+                      <div className="timeline-card">
+                        <div className="timeline-card-head">
+                          <span className="timeline-task-name">{task?.title || '工程未設定'}</span>
+                          <span className="timeline-task-count">記録 {taskLogCount}件</span>
+                        </div>
+                        <h4>{log.title}</h4>
+                        <p>{log.body}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </section>
 
         <Modal 
@@ -521,7 +609,12 @@ function ProjectDetailContent() {
                   <h3>{logPanelTask.title}</h3>
                   <p>{logPanelDate}</p>
                 </div>
-                <strong>記録 {getTaskLogs(logPanelTask.id).length}件</strong>
+                <div className="task-log-summary-actions">
+                  <strong>記録 {getTaskLogs(logPanelTask.id).length}件</strong>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => handleViewTaskHistory(logPanelTask)}>
+                    履歴を見る
+                  </button>
+                </div>
               </div>
 
               <div className="task-log-form">
@@ -1034,6 +1127,184 @@ function ProjectDetailContent() {
           border: 1px dashed var(--border);
         }
 
+        .task-log-timeline-panel {
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+        }
+
+        .timeline-panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 16px 18px;
+          background: var(--background);
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-panel-header h3 {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 900;
+        }
+
+        .timeline-panel-header p {
+          margin: 4px 0 0;
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--text-sub);
+        }
+
+        .timeline-panel-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .timeline-count {
+          height: 32px;
+          padding: 0 12px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .timeline-filter {
+          display: inline-flex;
+          padding: 3px;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--surface);
+        }
+
+        .timeline-filter button {
+          height: 32px;
+          padding: 0 12px;
+          border: none;
+          border-radius: 8px;
+          background: transparent;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .timeline-filter button.active {
+          background: var(--primary);
+          color: var(--text-on-primary);
+        }
+
+        .timeline-filter button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .task-log-timeline-list {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .timeline-log-item {
+          display: grid;
+          grid-template-columns: 132px 1fr;
+          gap: 16px;
+          padding: 16px 18px;
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-log-item:last-child {
+          border-bottom: none;
+        }
+
+        .timeline-date {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+          color: var(--text-sub);
+          font-weight: 800;
+          padding-top: 4px;
+        }
+
+        .timeline-date strong {
+          color: var(--text-main);
+          font-size: 13px;
+        }
+
+        .timeline-date span {
+          font-size: 11px;
+        }
+
+        .timeline-card {
+          position: relative;
+          padding: 14px 16px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+        }
+
+        .timeline-card::before {
+          content: "";
+          position: absolute;
+          top: 20px;
+          left: -22px;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: var(--primary);
+          box-shadow: 0 0 0 4px var(--primary-pastel);
+        }
+
+        .timeline-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .timeline-task-name {
+          color: var(--primary);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .timeline-task-count {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .timeline-card h4 {
+          margin: 0 0 6px;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .timeline-card p {
+          margin: 0;
+          color: var(--text-main);
+          line-height: 1.65;
+          white-space: pre-wrap;
+        }
+
+        .timeline-empty {
+          padding: 28px;
+          text-align: center;
+          color: var(--text-sub);
+          font-weight: 700;
+        }
+
         .periods-list-compact {
           display: flex;
           flex-direction: column;
@@ -1180,6 +1451,14 @@ function ProjectDetailContent() {
           font-size: 13px;
         }
 
+        .task-log-summary-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
         .task-log-form {
           display: flex;
           flex-direction: column;
@@ -1269,6 +1548,31 @@ function ProjectDetailContent() {
           border: 1px dashed var(--border);
           border-radius: var(--radius-md);
         }
+
+        @media (max-width: 760px) {
+          .timeline-panel-header,
+          .timeline-panel-actions,
+          .task-log-summary,
+          .task-log-summary-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .timeline-log-item {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+
+          .timeline-date {
+            align-items: flex-start;
+            flex-direction: row;
+            justify-content: space-between;
+          }
+
+          .timeline-card::before {
+            display: none;
+          }
+        }
       `}</style>
     </div>
   );
@@ -1277,6 +1581,19 @@ function ProjectDetailContent() {
 function formatLogDate(date: string) {
   const [, month, day] = date.split('-');
   return `${Number(month)}/${Number(day)}`;
+}
+
+function formatLogDateFull(date: string) {
+  const [year, month, day] = date.split('-');
+  if (!year || !month || !day) return date;
+  return `${year}-${month}-${day}`;
+}
+
+function formatLogCreatedAt(createdAt?: string) {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function ProjectDetailPage() {
