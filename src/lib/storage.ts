@@ -26,6 +26,14 @@ export interface Task {
 
 export type TaskLogType = 'memo' | 'photo' | 'change' | 'handoff';
 
+export interface TaskLogAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  dataUrl: string;
+  createdAt: string;
+}
+
 export interface TaskLog {
   id: string;
   projectId: string;
@@ -34,6 +42,7 @@ export interface TaskLog {
   type: TaskLogType;
   title: string;
   body: string;
+  attachments?: TaskLogAttachment[];
   createdAt: string;
   updatedAt: string;
 }

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
-import { storage, Project, Task, TaskLog } from "@/lib/storage";
+import { storage, Project, Task, TaskLog, TaskLogAttachment } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
@@ -71,6 +71,8 @@ function ProjectDetailContent() {
   const [logPanelDate, setLogPanelDate] = useState<string>('');
   const [logTitle, setLogTitle] = useState('');
   const [logBody, setLogBody] = useState('');
+  const [logAttachments, setLogAttachments] = useState<TaskLogAttachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<TaskLogAttachment | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
   const [timelineTaskId, setTimelineTaskId] = useState<string>('');
 
@@ -203,6 +205,7 @@ function ProjectDetailContent() {
     setLogPanelDate(date);
     setLogTitle('');
     setLogBody('');
+    setLogAttachments([]);
   };
 
   const handleViewTaskHistory = (task: Task) => {
@@ -211,8 +214,29 @@ function ProjectDetailContent() {
     setLogPanelTask(null);
   };
 
+  const handleLogImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    const now = new Date().toISOString();
+    const images = await Promise.all(files.map(async (file, index) => ({
+      id: `att-${Date.now()}-${index}`,
+      fileName: file.name,
+      fileType: file.type,
+      dataUrl: await readFileAsDataUrl(file),
+      createdAt: now,
+    })));
+
+    setLogAttachments(prev => [...prev, ...images]);
+    event.target.value = '';
+  };
+
+  const handleRemoveLogAttachment = (attachmentId: string) => {
+    setLogAttachments(prev => prev.filter(attachment => attachment.id !== attachmentId));
+  };
+
   const handleSaveTaskLog = () => {
-    if (!project || !logPanelTask || !logBody.trim()) return;
+    if (!project || !logPanelTask || (!logBody.trim() && logAttachments.length === 0)) return;
 
     const now = new Date().toISOString();
     const newLog: TaskLog = {
@@ -220,9 +244,10 @@ function ProjectDetailContent() {
       projectId: project.id,
       taskId: logPanelTask.id,
       logDate: logPanelDate,
-      type: 'memo',
-      title: logTitle.trim() || 'メモ',
+      type: logAttachments.length > 0 ? 'photo' : 'memo',
+      title: logTitle.trim() || (logAttachments.length > 0 ? '写真記録' : 'メモ'),
       body: logBody.trim(),
+      attachments: logAttachments.length > 0 ? logAttachments : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -235,6 +260,7 @@ function ProjectDetailContent() {
     setProject(updated);
     setLogTitle('');
     setLogBody('');
+    setLogAttachments([]);
   };
 
   const saveTasks = (tasks: Task[]) => {
@@ -554,6 +580,21 @@ function ProjectDetailContent() {
                         </div>
                         <h4>{log.title}</h4>
                         <p>{log.body}</p>
+                        {log.attachments && log.attachments.length > 0 && (
+                          <div className="log-attachment-thumbs">
+                            {log.attachments.map((attachment) => (
+                              <button
+                                type="button"
+                                key={attachment.id}
+                                className="log-attachment-thumb"
+                                onClick={() => setPreviewAttachment(attachment)}
+                                aria-label={`${attachment.fileName} を拡大表示`}
+                              >
+                                <img src={attachment.dataUrl} alt={attachment.fileName} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </article>
                   );
@@ -637,6 +678,37 @@ function ProjectDetailContent() {
                     className="form-textarea"
                   />
                 </div>
+                <div className="form-group">
+                  <label>写真</label>
+                  <label className="image-picker">
+                    <Camera size={18} />
+                    <span>画像を選択</span>
+                    <input type="file" accept="image/*" multiple onChange={handleLogImageSelect} />
+                  </label>
+                  {logAttachments.length > 0 && (
+                    <div className="selected-attachments">
+                      {logAttachments.map((attachment) => (
+                        <div key={attachment.id} className="selected-attachment">
+                          <button
+                            type="button"
+                            className="selected-attachment-preview"
+                            onClick={() => setPreviewAttachment(attachment)}
+                            aria-label={`${attachment.fileName} を拡大表示`}
+                          >
+                            <img src={attachment.dataUrl} alt={attachment.fileName} />
+                          </button>
+                          <button
+                            type="button"
+                            className="selected-attachment-remove"
+                            onClick={() => handleRemoveLogAttachment(attachment.id)}
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button type="button" className="btn btn-primary" onClick={handleSaveTaskLog}>
                   <Plus size={16} /> 記録追加
                 </button>
@@ -653,11 +725,38 @@ function ProjectDetailContent() {
                         <span className={`task-log-type ${log.type}`}>{taskLogTypeLabels[log.type]}</span>
                         <h4>{log.title}</h4>
                         <p>{log.body}</p>
+                        {log.attachments && log.attachments.length > 0 && (
+                          <div className="log-attachment-thumbs">
+                            {log.attachments.map((attachment) => (
+                              <button
+                                type="button"
+                                key={attachment.id}
+                                className="log-attachment-thumb"
+                                onClick={() => setPreviewAttachment(attachment)}
+                                aria-label={`${attachment.fileName} を拡大表示`}
+                              >
+                                <img src={attachment.dataUrl} alt={attachment.fileName} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </article>
                   ))
                 )}
               </div>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+          isOpen={!!previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+          title={previewAttachment?.fileName || '写真'}
+        >
+          {previewAttachment && (
+            <div className="attachment-preview-modal">
+              <img src={previewAttachment.dataUrl} alt={previewAttachment.fileName} />
             </div>
           )}
         </Modal>
@@ -1298,6 +1397,32 @@ function ProjectDetailContent() {
           white-space: pre-wrap;
         }
 
+        .log-attachment-thumbs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 12px;
+        }
+
+        .log-attachment-thumb {
+          width: 72px;
+          height: 72px;
+          padding: 0;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--surface-hover);
+          overflow: hidden;
+          cursor: pointer;
+        }
+
+        .log-attachment-thumb img,
+        .selected-attachment-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
         .timeline-empty {
           padding: 28px;
           text-align: center;
@@ -1489,6 +1614,62 @@ function ProjectDetailContent() {
           font-size: 15px;
         }
 
+        .image-picker {
+          min-height: 48px;
+          padding: 0 14px;
+          border: 1px dashed var(--primary);
+          border-radius: var(--radius-md);
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .image-picker input {
+          display: none;
+        }
+
+        .selected-attachments {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+          gap: 10px;
+        }
+
+        .selected-attachment {
+          position: relative;
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          background: var(--surface);
+          overflow: hidden;
+        }
+
+        .selected-attachment-preview {
+          width: 100%;
+          aspect-ratio: 1;
+          padding: 0;
+          border: none;
+          background: var(--surface-hover);
+          cursor: pointer;
+          display: block;
+        }
+
+        .selected-attachment-remove {
+          width: 100%;
+          min-height: 32px;
+          border: none;
+          border-top: 1px solid var(--border-light);
+          background: var(--surface);
+          color: var(--danger);
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
         .task-log-list {
           display: flex;
           flex-direction: column;
@@ -1539,6 +1720,24 @@ function ProjectDetailContent() {
           color: var(--text-main);
           white-space: pre-wrap;
           line-height: 1.6;
+        }
+
+        .attachment-preview-modal {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          max-height: 72vh;
+          overflow: auto;
+          background: var(--surface-hover);
+          border-radius: var(--radius-md);
+          padding: 12px;
+        }
+
+        .attachment-preview-modal img {
+          max-width: 100%;
+          max-height: 68vh;
+          object-fit: contain;
+          border-radius: var(--radius-sm);
         }
 
         .empty-log {
@@ -1594,6 +1793,15 @@ function formatLogCreatedAt(createdAt?: string) {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return '';
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function ProjectDetailPage() {
