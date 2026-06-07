@@ -131,6 +131,10 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
+    if (isPhotoProcessing) {
+      setPhotoMessage('写真の処理が終わるまで保存できません。');
+      return;
+    }
     const primaryPhoto = photos[0]?.dataUrl || '';
     onSubmit({ 
       title, 
@@ -302,6 +306,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
               />
             </label>
           </div>
+          {isPhotoProcessing && <p className="photo-processing-note">写真を端末保存向けに処理しています。完了後に保存してください。</p>}
           {photoMessage && <p className="photo-message">{photoMessage}</p>}
         </div>
       </div>
@@ -343,8 +348,8 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         <button type="button" onClick={onCancel} className="btn btn-outline">
           キャンセル
         </button>
-        <button type="submit" className="btn btn-primary">
-          保存する
+        <button type="submit" className="btn btn-primary" disabled={isPhotoProcessing}>
+          {isPhotoProcessing ? '写真処理中' : '保存する'}
         </button>
       </div>
 
@@ -675,6 +680,17 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           color: var(--warning);
           font-size: 12px;
           font-weight: 800;
+        }
+
+        .photo-processing-note {
+          margin: 0;
+          padding: 10px 12px;
+          border: 1px solid var(--warning);
+          border-radius: var(--radius-sm);
+          background: var(--warning-pastel);
+          color: var(--warning);
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .btn-remove-photo {
