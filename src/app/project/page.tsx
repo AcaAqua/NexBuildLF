@@ -572,10 +572,10 @@ function ProjectDetailContent() {
                         )}
                       </div>
                     </div>
-                    <div className="task-text-cell">{task.assignee || '未設定'}</div>
-                    <div className="task-text-cell">{range.start || '-'}</div>
-                    <div className="task-text-cell">{range.end || '-'}</div>
-                    <div>
+                    <div className="task-text-cell task-assignee-cell">{task.assignee || '未設定'}</div>
+                    <div className="task-text-cell task-start-cell">{range.start || '-'}</div>
+                    <div className="task-text-cell task-end-cell">{range.end || '-'}</div>
+                    <div className="task-status-cell">
                       <select
                         className={`status-select ${task.status}`}
                         value={task.status}
@@ -2274,6 +2274,94 @@ function ProjectDetailContent() {
         }
 
         @media (max-width: 760px) {
+          .project-detail {
+            padding-bottom: calc(20px + var(--navbar-height) + env(safe-area-inset-bottom));
+          }
+
+          .task-list-panel {
+            overflow: visible;
+            border: none;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .task-list-header {
+            display: none;
+          }
+
+          .task-list-row {
+            min-height: auto;
+            padding: 14px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            box-shadow: var(--shadow-sm);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas:
+              "name status"
+              "period period"
+              "assignee assignee"
+              "log actions";
+            gap: 10px 12px;
+          }
+
+          .task-name-cell {
+            grid-area: name;
+            align-self: center;
+          }
+
+          .task-name-cell h4 {
+            white-space: normal;
+            line-height: 1.35;
+          }
+
+          .periods-list-compact {
+            grid-area: period;
+          }
+
+          .task-assignee-cell {
+            grid-area: assignee;
+          }
+
+          .task-start-cell,
+          .task-end-cell {
+            display: none;
+          }
+
+          .task-status-cell {
+            grid-area: status;
+            min-width: 112px;
+          }
+
+          .status-select {
+            min-height: 46px;
+            font-size: 13px;
+          }
+
+          .task-log-action-cell {
+            grid-area: log;
+            align-self: stretch;
+          }
+
+          .task-log-action {
+            width: 100%;
+            min-height: 48px;
+          }
+
+          .task-row-actions {
+            grid-area: actions;
+            justify-content: flex-end;
+          }
+
+          .icon-action {
+            width: 48px;
+            min-width: 48px;
+            height: 48px;
+          }
+
           .timeline-panel-header,
           .timeline-panel-actions,
           .task-log-summary,
