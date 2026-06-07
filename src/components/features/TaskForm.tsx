@@ -250,6 +250,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
                   <div className="photo-meta">
                     <ImageIcon size={14} />
                     <span>{index === 0 ? '代表写真' : `写真 ${index + 1}`}</span>
+                    <strong>{formatDataSize(estimateDataUrlBytes(item.dataUrl))}</strong>
                   </div>
                   <button type="button" className="btn-remove-photo" onClick={() => handleRemovePhoto(item.id)} aria-label={`添付写真 ${index + 1} を削除`}>
                     <X size={16} />
@@ -602,6 +603,13 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           gap: 6px;
           color: var(--text-main);
           font-size: 12px;
+          font-weight: 900;
+        }
+
+        .photo-meta strong {
+          margin-left: auto;
+          color: var(--text-sub);
+          font-size: 11px;
           font-weight: 900;
         }
 

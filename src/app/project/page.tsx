@@ -52,6 +52,12 @@ const getTaskPhotoCount = (task: Task) => {
   return task.photo ? 1 : 0;
 };
 
+const getAttachmentDataSize = (attachments?: TaskLogAttachment[]) => {
+  if (!attachments || attachments.length === 0) return '0KB';
+  const bytes = attachments.reduce((total, attachment) => total + estimateDataUrlBytes(attachment.dataUrl), 0);
+  return formatDataSize(bytes);
+};
+
 function ProjectDetailContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
@@ -690,7 +696,7 @@ function ProjectDetailContent() {
                             {taskLogTypeLabels[log.type]}
                           </span>
                           <h4>{log.title}</h4>
-                          {attachmentCount > 0 && <span className="timeline-attachment-count">{attachmentCount}枚</span>}
+                          {attachmentCount > 0 && <span className="timeline-attachment-count">保存済み {attachmentCount}枚 / {getAttachmentDataSize(log.attachments)}</span>}
                         </div>
                         <p>{log.body || (attachmentCount > 0 ? '写真のみの記録' : '')}</p>
                         {log.attachments && log.attachments.length > 0 && (
@@ -701,9 +707,10 @@ function ProjectDetailContent() {
                                 key={attachment.id}
                                 className="log-attachment-thumb"
                                 onClick={() => setPreviewAttachment(attachment)}
-                                aria-label={`${attachment.fileName} を拡大表示`}
+                                aria-label={`${attachment.fileName} ${formatDataSize(estimateDataUrlBytes(attachment.dataUrl))} を拡大表示`}
                               >
                                 <img src={attachment.dataUrl} alt={attachment.fileName} />
+                                <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
                               </button>
                             ))}
                           </div>
@@ -826,6 +833,9 @@ function ProjectDetailContent() {
                           >
                             <img src={attachment.dataUrl} alt={attachment.fileName} />
                           </button>
+                          <div className="selected-attachment-meta">
+                            <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
+                          </div>
                           <button
                             type="button"
                             className="selected-attachment-remove"
@@ -852,6 +862,9 @@ function ProjectDetailContent() {
                       <div className="task-log-date">{formatLogDate(log.logDate)}</div>
                       <div className="task-log-card">
                         <span className={`task-log-type ${log.type}`}>{taskLogTypeLabels[log.type]}</span>
+                        {log.attachments && log.attachments.length > 0 && (
+                          <span className="timeline-attachment-count">保存済み {log.attachments.length}枚 / {getAttachmentDataSize(log.attachments)}</span>
+                        )}
                         <h4>{log.title}</h4>
                         <p>{log.body}</p>
                         {log.attachments && log.attachments.length > 0 && (
@@ -862,9 +875,10 @@ function ProjectDetailContent() {
                                 key={attachment.id}
                                 className="log-attachment-thumb"
                                 onClick={() => setPreviewAttachment(attachment)}
-                                aria-label={`${attachment.fileName} を拡大表示`}
+                                aria-label={`${attachment.fileName} ${formatDataSize(estimateDataUrlBytes(attachment.dataUrl))} を拡大表示`}
                               >
                                 <img src={attachment.dataUrl} alt={attachment.fileName} />
+                                <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
                               </button>
                             ))}
                           </div>
@@ -1671,6 +1685,7 @@ function ProjectDetailContent() {
         }
 
         .log-attachment-thumb {
+          position: relative;
           width: 88px;
           height: 88px;
           padding: 0;
@@ -1679,6 +1694,21 @@ function ProjectDetailContent() {
           background: var(--surface-hover);
           overflow: hidden;
           cursor: pointer;
+        }
+
+        .log-attachment-thumb span {
+          position: absolute;
+          right: 4px;
+          bottom: 4px;
+          min-height: 22px;
+          padding: 0 6px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.68);
+          color: #fff;
+          display: inline-flex;
+          align-items: center;
+          font-size: 10px;
+          font-weight: 900;
         }
 
         .log-attachment-thumb img,
@@ -1978,6 +2008,18 @@ function ProjectDetailContent() {
           background: var(--surface-hover);
           cursor: pointer;
           display: block;
+        }
+
+        .selected-attachment-meta {
+          min-height: 28px;
+          padding: 0 8px;
+          border-top: 1px solid var(--border-light);
+          color: var(--text-sub);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 900;
         }
 
         .selected-attachment-remove {
