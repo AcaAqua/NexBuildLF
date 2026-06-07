@@ -20,25 +20,57 @@ export interface Task {
   assignee: string;
   status: 'pending' | 'doing' | 'done' | 'hold';
   color?: string;
+  memo?: string;
+  photo?: string;
+}
+
+export type TaskLogType = 'memo' | 'photo' | 'change' | 'handoff';
+
+export interface TaskLogAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  dataUrl: string;
+  createdAt: string;
+}
+
+export interface TaskLog {
+  id: string;
+  projectId: string;
+  taskId: string;
+  logDate: string;
+  type: TaskLogType;
+  title: string;
+  body: string;
+  attachments?: TaskLogAttachment[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Project {
   id: string;
   title: string;
   type: string;
-  status: 'planning' | 'in_progress' | 'completed';
+  status: 'planning' | 'in_progress' | 'delayed' | 'completed';
   location: string;
   progress: number;
   updatedAt: string;
   tasks: Task[];
+  taskLogs?: TaskLog[];
+  dailyMemos?: { [key: string]: string };
+  memo?: string;
   isArchived?: boolean;
 }
 
 export interface Partner {
   id: string;
   name: string;
-  role: string;
+  role?: string;
+  company?: string;
+  type?: string;
   phone?: string;
+  email?: string;
+  notes?: string;
 }
 
 export interface Settings {
@@ -123,6 +155,30 @@ export const storage = {
               assignee: '自社・大工',
               status: 'pending',
               color: '#ffd8d8'
+            }
+          ],
+          taskLogs: [
+            {
+              id: 'log-1',
+              projectId: 'demo-1',
+              taskId: 'task-2',
+              logDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
+              type: 'memo',
+              title: '雨天対応',
+              body: '雨天のため午後の作業を中断。翌朝に再開予定。',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            {
+              id: 'log-2',
+              projectId: 'demo-1',
+              taskId: 'task-2',
+              logDate: format(addDays(new Date(), 4), 'yyyy-MM-dd'),
+              type: 'memo',
+              title: '配筋確認',
+              body: '配筋位置を現場で確認。追加指示待ち。',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
             }
           ],
           isArchived: false

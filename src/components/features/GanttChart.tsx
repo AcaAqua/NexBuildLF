@@ -1,32 +1,35 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { format, addDays, startOfDay, differenceInDays, min, max, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { Maximize, Minimize } from 'lucide-react';
-import { storage, Task, Settings } from '@/lib/storage';
+import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
 interface GanttChartProps {
   tasks: Task[];
   dailyMemos?: { [key: string]: string };
+  taskLogs?: TaskLog[];
   onUpdate?: (task: Task) => void;
   onEdit?: (task: Task) => void;
   onReorder?: (newTasks: Task[]) => void;
   onDateClick?: (date: string) => void;
+  onOpenTaskLog?: (task: Task, date: string) => void;
 }
 
-const getTaskPeriods = (task: Task) => {
+const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) {
     return task.periods;
   }
 
   const start = task.startDate || task.start_date;
+  if (!start) return [];
   const end = task.endDate || task.end_date || start;
-  return start ? [{ start, end }] : [];
+  return [{ start, end }];
 };
 
-export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, onReorder, onDateClick }: GanttChartProps) {
+export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [uiScale, setUiScale] = React.useState<'sm' | 'md' | 'lg'>('md');
 
@@ -35,6 +38,20 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
   }, []);
 
   const cellWidth = uiScale === 'sm' ? 36 : uiScale === 'lg' ? 64 : 50;
+
+  const logCountByDate = useMemo(() => {
+    return taskLogs.reduce<Record<string, number>>((acc, log) => {
+      acc[log.logDate] = (acc[log.logDate] || 0) + 1;
+      return acc;
+    }, {});
+  }, [taskLogs]);
+
+  const logCountByTask = useMemo(() => {
+    return taskLogs.reduce<Record<string, number>>((acc, log) => {
+      acc[log.taskId] = (acc[log.taskId] || 0) + 1;
+      return acc;
+    }, {});
+  }, [taskLogs]);
 
   // 日付の範囲を計算
   const { startDate, days } = useMemo(() => {
@@ -57,6 +74,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
 
     return { startDate: start, days: daysArr };
   }, [tasks]);
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const handleDragEnd = (task: Task, periodIndex: number, offset: number) => {
     const daysMoved = Math.round(offset / cellWidth);
@@ -107,16 +125,22 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
               <div className="timeline-days">
                 {days.map((day) => {
                   const dateStr = format(day, 'yyyy-MM-dd');
+                  const dayName = format(day, 'E');
+                  const isSat = dayName === 'Sat';
+                  const isSun = dayName === 'Sun';
+                  const isToday = dateStr === todayStr;
                   const hasMemo = dailyMemos[dateStr];
+                  const logCount = logCountByDate[dateStr] || 0;
                   return (
                     <div 
                       key={`h-${day.getTime()}`} 
-                      className={`day-cell ${format(day, 'E') === 'Sat' ? 'sat' : format(day, 'E') === 'Sun' ? 'sun' : ''} ${hasMemo ? 'has-memo' : ''}`}
+                      className={`day-cell ${isSat ? 'sat' : isSun ? 'sun' : ''} ${isToday ? 'today' : ''} ${(hasMemo || logCount > 0) ? 'has-memo' : ''}`}
                       onClick={() => onDateClick && onDateClick(dateStr)}
                     >
                       <span className="day-num">{format(day, 'd')}</span>
                       <span className="day-name">{format(day, 'E', { locale: ja })}</span>
                       {hasMemo && <span className="memo-dot" />}
+                      {logCount > 0 && <span className="log-date-pin">●</span>}
                     </div>
                   );
                 })}
@@ -154,18 +178,26 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                         }}
                       >
                         {/* Grid background lines */}
-                        {days.map((day, i) => (
+                        {days.map((day, i) => {
+                          const dateStr = format(day, 'yyyy-MM-dd');
+                          const dayName = format(day, 'E');
+                          const isSat = dayName === 'Sat';
+                          const isSun = dayName === 'Sun';
+                          const isToday = dateStr === todayStr;
+                          return (
                           <div 
                             key={`g-${task.id}-${day.getTime()}`} 
-                            className="grid-line" 
+                            className={`grid-line ${isSat ? 'sat' : isSun ? 'sun' : ''} ${isToday ? 'today' : ''}`}
                             style={{ left: `calc(var(--gantt-cell-width) * ${i})`, top: 0 }}
                           />
-                        ))}
+                          );
+                        })}
                         
                         {/* Multiple Task Bars (Periods) */}
                         {getTaskPeriods(task).map((period, pIdx) => {
                           const sDate = startOfDay(parseISO(period.start));
                           const eDate = startOfDay(parseISO(period.end));
+                          const taskLogCount = logCountByTask[task.id] || 0;
                           if (isNaN(sDate.getTime())) return null;
 
                           const startOffset = differenceInDays(sDate, startDate);
@@ -185,6 +217,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                 dragMomentum={false}
                                 dragElastic={0.05}
                                 onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
+                                onClick={() => onOpenTaskLog && onOpenTaskLog(task, period.start)}
                                 className={`task-bar ${task.status} draggable`}
                                 style={{ 
                                   backgroundColor: task.color ? task.color : undefined,
@@ -194,13 +227,13 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                   borderRadius: '16px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  padding: '0 12px',
-                                  fontSize: '12px',
+                                  padding: '0 14px',
+                                  fontSize: '13px',
                                   fontWeight: 800,
                                   boxShadow: 'var(--shadow-sm)',
                                   position: 'relative',
                                   cursor: 'grab',
-                                  overflow: 'hidden',
+                                  overflow: 'visible',
                                 }}
                                 whileDrag={{ 
                                   scale: 1.05, 
@@ -209,6 +242,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
                                 }}
                               >
                                 <span className="bar-label">{period.label || task.title}</span>
+                                {taskLogCount > 0 && (
+                                  <span className="task-log-badge">💬{taskLogCount}</span>
+                                )}
                               </motion.div>
                             </div>
                           );
@@ -266,7 +302,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           align-items: center;
           gap: 10px;
           transition: all 0.2s;
-          border-right: 1px solid var(--border-light);
+          border-right: 1px solid var(--gantt-grid-line);
           box-shadow: 4px 0 8px rgba(0, 0, 0, 0.02);
         }
 
@@ -357,8 +393,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border-right: 1px solid var(--border-light);
-          background: var(--background);
+          border-right: 1px solid var(--gantt-grid-line);
+          background: var(--surface);
           cursor: pointer;
           position: relative;
           transition: all 0.2s;
@@ -368,8 +404,22 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           background: var(--surface-hover);
         }
 
-        .day-cell.sat { color: #007aff; }
-        .day-cell.sun { color: #ff3b30; }
+        .day-cell.sat {
+          color: #007aff;
+          background: var(--gantt-sat-bg);
+        }
+
+        .day-cell.sun {
+          color: #ff3b30;
+          background: var(--gantt-sun-bg);
+        }
+
+        .day-cell.today {
+          color: var(--primary);
+          background: var(--gantt-today-bg);
+          box-shadow: inset 0 -3px 0 var(--primary);
+        }
+
         .day-num { font-size: 14px; font-weight: 700; }
         .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
 
@@ -383,6 +433,23 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           border-radius: 50%;
         }
 
+        .log-date-pin {
+          position: absolute;
+          bottom: 6px;
+          right: 6px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: var(--primary);
+          color: var(--text-on-primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 8px;
+          font-weight: 900;
+          line-height: 1;
+        }
+
         .gantt-row {
           min-height: var(--gantt-row-height);
         }
@@ -391,15 +458,29 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           position: absolute;
           width: var(--gantt-cell-width);
           height: 100%;
-          border-right: 1px solid var(--border-light);
-          opacity: 0.3;
+          border-right: 1px solid var(--gantt-grid-line);
+          opacity: 0.75;
+        }
+
+        .grid-line.sat {
+          background: var(--gantt-sat-bg);
+        }
+
+        .grid-line.sun {
+          background: var(--gantt-sun-bg);
+        }
+
+        .grid-line.today {
+          background: var(--gantt-today-bg);
+          border-right-color: var(--primary);
+          opacity: 1;
         }
 
         .task-bar-container {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
-          height: 32px;
+          height: 40px;
           z-index: 10;
         }
 
@@ -409,13 +490,14 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           border-radius: 16px;
           display: flex;
           align-items: center;
-          padding: 0 12px;
+          padding: 0 14px;
           color: white;
-          font-size: 11px;
-          font-weight: 700;
+          font-size: 13px;
+          font-weight: 800;
           box-shadow: var(--shadow-sm);
           position: relative;
           cursor: grab;
+          overflow: visible;
         }
 
         .task-bar.pending { background: #d2d2d7; color: #86868b; }
@@ -427,6 +509,28 @@ export default function GanttChart({ tasks, dailyMemos = {}, onUpdate, onEdit, o
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          padding-right: 40px;
+          line-height: 1.2;
+        }
+
+        .task-log-badge {
+          position: absolute;
+          top: 50%;
+          right: 8px;
+          transform: translateY(-50%);
+          min-width: 36px;
+          height: 22px;
+          padding: 0 7px;
+          border-radius: 999px;
+          background: var(--primary);
+          color: var(--text-on-primary);
+          border: 2px solid var(--surface);
+          box-shadow: var(--shadow-sm);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 900;
         }
 
         .empty-state {

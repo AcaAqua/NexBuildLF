@@ -154,13 +154,13 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                style={{ position: 'relative' }}
+                className="project-card-shell"
               >
-                <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: '8px' }}>
+                <div className="project-card-actions">
                   <Link 
                     href={`/meeting?projectId=${project.id}`}
                     title="打ち合わせモード (全画面)"
-                    style={{ background: 'var(--primary-pastel)', color: 'var(--primary)', padding: '6px', borderRadius: '6px', border: '1px solid var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    className="project-action-btn meeting"
                   >
                     <LayoutGrid size={16} />
                   </Link>
@@ -168,7 +168,6 @@ export default function Home() {
                     className="delete-btn" 
                     onClick={(e) => handleArchive(project, e)}
                     title={project.isArchived ? "復元する" : "アーカイブする"}
-                    style={{ background: 'var(--surface)', padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', cursor: 'pointer' }}
                   >
                     {project.isArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                   </button>
@@ -176,7 +175,6 @@ export default function Home() {
                     className="delete-btn" 
                     onClick={(e) => handleDelete(project.id, e)}
                     title="完全に削除"
-                    style={{ background: '#fff1f0', color: '#ff4d4f', padding: '6px', borderRadius: '6px', border: '1px solid #ffccc7', cursor: 'pointer' }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -296,6 +294,57 @@ export default function Home() {
           display: grid;
           grid-template-columns: 1fr;
           gap: 20px;
+        }
+
+        .project-card-shell {
+          position: relative;
+          border-radius: var(--radius-lg);
+          background: #ffffff;
+          box-shadow: 0 16px 42px rgba(0, 71, 160, 0.1);
+        }
+
+        .project-card-actions {
+          position: absolute;
+          top: 18px;
+          right: 18px;
+          z-index: 10;
+          display: flex;
+          gap: 8px;
+        }
+
+        .project-action-btn,
+        .delete-btn {
+          width: 36px;
+          height: 36px;
+          padding: 0;
+          border-radius: 10px;
+          border: 1px solid var(--border-light);
+          background: #ffffff;
+          color: var(--text-main);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 18px rgba(0, 71, 160, 0.08);
+          transition: all 0.2s;
+        }
+
+        .project-action-btn.meeting {
+          color: var(--primary);
+          border-color: var(--primary);
+          background: #f7fbff;
+        }
+
+        .delete-btn:last-child {
+          color: var(--danger);
+          border-color: #ffccc7;
+          background: #fff7f7;
+        }
+
+        .project-action-btn:hover,
+        .delete-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-md);
         }
 
         .empty-state {

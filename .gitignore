@@ -28,6 +28,7 @@ build
 
 # cache
 .cache
+test-results/
 
 # vscode
 .vscode/*

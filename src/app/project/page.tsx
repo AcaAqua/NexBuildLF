@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
-import { storage, Project, Task } from "@/lib/storage";
+import { storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
@@ -19,11 +19,19 @@ const taskStatusLabels: Record<Task['status'], string> = {
   hold: '保留',
 };
 
-const getTaskPeriods = (task: Task) => {
+const taskLogTypeLabels: Record<TaskLog['type'], string> = {
+  memo: 'メモ',
+  photo: '写真',
+  change: '変更',
+  handoff: '申し送り',
+};
+
+const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) return task.periods;
   const start = task.startDate || task.start_date;
+  if (!start) return [];
   const end = task.endDate || task.end_date || start;
-  return start ? [{ start, end }] : [];
+  return [{ start, end }];
 };
 
 const getTaskDateRange = (task: Task) => {
@@ -58,6 +66,16 @@ function ProjectDetailContent() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [dateMemo, setDateMemo] = useState('');
+
+  // 工程記録管理
+  const [logPanelTask, setLogPanelTask] = useState<Task | null>(null);
+  const [logPanelDate, setLogPanelDate] = useState<string>('');
+  const [logTitle, setLogTitle] = useState('');
+  const [logBody, setLogBody] = useState('');
+  const [logAttachments, setLogAttachments] = useState<TaskLogAttachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<TaskLogAttachment | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
+  const [timelineTaskId, setTimelineTaskId] = useState<string>('');
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -126,6 +144,24 @@ function ProjectDetailContent() {
     return Array.from(new Set(names));
   }, [project]);
 
+  const taskById = useMemo(() => {
+    if (!project) return new Map<string, Task>();
+    return new Map(project.tasks.map(task => [task.id, task]));
+  }, [project]);
+
+  const timelineLogs = useMemo(() => {
+    if (!project) return [];
+    return [...(project.taskLogs || [])]
+      .filter(log => timelineFilter === 'all' || !timelineTaskId || log.taskId === timelineTaskId)
+      .sort((a, b) => {
+        const bTime = b.createdAt || b.logDate;
+        const aTime = a.createdAt || a.logDate;
+        return bTime.localeCompare(aTime);
+      });
+  }, [project, timelineFilter, timelineTaskId]);
+
+  const selectedTimelineTask = timelineTaskId ? taskById.get(timelineTaskId) : undefined;
+
   const handleOpenAddModal = () => {
     setEditingTask(undefined);
     setIsModalOpen(true);
@@ -156,6 +192,76 @@ function ProjectDetailContent() {
     storage.saveProject(updatedProject);
     loadData();
     setIsModalOpen(false);
+  };
+
+  const getTaskLogs = (taskId?: string, logDate?: string) => {
+    if (!project) return [];
+    return (project.taskLogs || [])
+      .filter(log => (!taskId || log.taskId === taskId) && (!logDate || log.logDate === logDate))
+      .sort((a, b) => a.logDate.localeCompare(b.logDate) || a.createdAt.localeCompare(b.createdAt));
+  };
+
+  const handleOpenTaskLog = (task: Task, date: string) => {
+    setLogPanelTask(task);
+    setLogPanelDate(date);
+    setLogTitle('');
+    setLogBody('');
+    setLogAttachments([]);
+  };
+
+  const handleViewTaskHistory = (task: Task) => {
+    setTimelineTaskId(task.id);
+    setTimelineFilter('selected');
+    setLogPanelTask(null);
+  };
+
+  const handleLogImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    const now = new Date().toISOString();
+    const images = await Promise.all(files.map(async (file, index) => ({
+      id: `att-${Date.now()}-${index}`,
+      fileName: file.name,
+      fileType: file.type,
+      dataUrl: await readFileAsDataUrl(file),
+      createdAt: now,
+    })));
+
+    setLogAttachments(prev => [...prev, ...images]);
+    event.target.value = '';
+  };
+
+  const handleRemoveLogAttachment = (attachmentId: string) => {
+    setLogAttachments(prev => prev.filter(attachment => attachment.id !== attachmentId));
+  };
+
+  const handleSaveTaskLog = () => {
+    if (!project || !logPanelTask || (!logBody.trim() && logAttachments.length === 0)) return;
+
+    const now = new Date().toISOString();
+    const newLog: TaskLog = {
+      id: `log-${Date.now()}`,
+      projectId: project.id,
+      taskId: logPanelTask.id,
+      logDate: logPanelDate,
+      type: logAttachments.length > 0 ? 'photo' : 'memo',
+      title: logTitle.trim() || (logAttachments.length > 0 ? '写真記録' : 'メモ'),
+      body: logBody.trim(),
+      attachments: logAttachments.length > 0 ? logAttachments : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updated: Project = {
+      ...project,
+      taskLogs: [...(project.taskLogs || []), newLog],
+    };
+    storage.saveProject(updated);
+    setProject(updated);
+    setLogTitle('');
+    setLogBody('');
+    setLogAttachments([]);
   };
 
   const saveTasks = (tasks: Task[]) => {
@@ -336,10 +442,12 @@ function ProjectDetailContent() {
             <GanttChart
               tasks={displayTasks}
               dailyMemos={project.dailyMemos}
+              taskLogs={project.taskLogs}
               onUpdate={handleSaveTask}
               onEdit={handleEditTask}
               onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
               onDateClick={handleDateClick}
+              onOpenTaskLog={handleOpenTaskLog}
             />
           </div>
 
@@ -350,6 +458,7 @@ function ProjectDetailContent() {
               <span>開始日</span>
               <span>終了日</span>
               <span>状態</span>
+              <span>記録</span>
               <span>操作</span>
             </div>
             {displayTasks.length === 0 ? (
@@ -357,6 +466,7 @@ function ProjectDetailContent() {
             ) : (
               displayTasks.map((task: Task) => {
                 const range = getTaskDateRange(task);
+                const taskLogCount = getTaskLogs(task.id).length;
                 return (
                   <div key={task.id} className="task-list-row" onClick={() => handleEditTask(task)}>
                     <div className="task-name-cell">
@@ -387,6 +497,16 @@ function ProjectDetailContent() {
                         ))}
                       </select>
                     </div>
+                    <div className="task-log-action-cell" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="task-log-action"
+                        onClick={() => handleOpenTaskLog(task, range.start || new Date().toISOString().slice(0, 10))}
+                      >
+                        <FileText size={14} />
+                        {taskLogCount > 0 ? `記録 ${taskLogCount}` : '記録'}
+                      </button>
+                    </div>
                     <div className="task-row-actions" onClick={(e) => e.stopPropagation()}>
                       <button type="button" className="icon-action" onClick={() => handleEditTask(task)} title="編集">
                         <Pencil size={16} />
@@ -404,6 +524,83 @@ function ProjectDetailContent() {
                   </div>
                 );
               })
+            )}
+          </div>
+
+          <div className="task-log-timeline-panel">
+            <div className="timeline-panel-header">
+              <div>
+                <h3>工程記録タイムライン</h3>
+                <p>
+                  {timelineFilter === 'selected' && selectedTimelineTask
+                    ? `${selectedTimelineTask.title} の記録`
+                    : '全工程の記録'}
+                </p>
+              </div>
+              <div className="timeline-panel-actions">
+                <span className="timeline-count">記録 {timelineLogs.length}件</span>
+                <div className="timeline-filter">
+                  <button
+                    type="button"
+                    className={timelineFilter === 'all' ? 'active' : ''}
+                    onClick={() => setTimelineFilter('all')}
+                  >
+                    全体
+                  </button>
+                  <button
+                    type="button"
+                    className={timelineFilter === 'selected' ? 'active' : ''}
+                    disabled={!timelineTaskId}
+                    onClick={() => setTimelineFilter('selected')}
+                  >
+                    選択工程のみ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {timelineLogs.length === 0 ? (
+              <div className="timeline-empty">
+                {timelineFilter === 'selected' ? '選択中の工程記録はまだありません。' : '工程記録はまだありません。'}
+              </div>
+            ) : (
+              <div className="task-log-timeline-list">
+                {timelineLogs.map((log) => {
+                  const task = taskById.get(log.taskId);
+                  const taskLogCount = getTaskLogs(log.taskId).length;
+                  return (
+                    <article key={log.id} className="timeline-log-item">
+                      <div className="timeline-date">
+                        <strong>{formatLogDateFull(log.logDate)}</strong>
+                        <span>{formatLogCreatedAt(log.createdAt)}</span>
+                      </div>
+                      <div className="timeline-card">
+                        <div className="timeline-card-head">
+                          <span className="timeline-task-name">{task?.title || '工程未設定'}</span>
+                          <span className="timeline-task-count">記録 {taskLogCount}件</span>
+                        </div>
+                        <h4>{log.title}</h4>
+                        <p>{log.body}</p>
+                        {log.attachments && log.attachments.length > 0 && (
+                          <div className="log-attachment-thumbs">
+                            {log.attachments.map((attachment) => (
+                              <button
+                                type="button"
+                                key={attachment.id}
+                                className="log-attachment-thumb"
+                                onClick={() => setPreviewAttachment(attachment)}
+                                aria-label={`${attachment.fileName} を拡大表示`}
+                              >
+                                <img src={attachment.dataUrl} alt={attachment.fileName} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
             )}
           </div>
         </section>
@@ -440,6 +637,129 @@ function ProjectDetailContent() {
               <button type="button" className="btn btn-primary" onClick={handleSaveDailyMemo}>保存する</button>
             </div>
           </div>
+        </Modal>
+
+        <Modal
+          isOpen={!!logPanelTask}
+          onClose={() => setLogPanelTask(null)}
+          title="工程記録"
+        >
+          {logPanelTask && (
+            <div className="task-log-panel">
+              <div className="task-log-summary">
+                <div>
+                  <h3>{logPanelTask.title}</h3>
+                  <p>{logPanelDate}</p>
+                </div>
+                <div className="task-log-summary-actions">
+                  <strong>記録 {getTaskLogs(logPanelTask.id).length}件</strong>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => handleViewTaskHistory(logPanelTask)}>
+                    履歴を見る
+                  </button>
+                </div>
+              </div>
+
+              <div className="task-log-form">
+                <div className="form-group">
+                  <label>記録タイトル</label>
+                  <input
+                    type="text"
+                    value={logTitle}
+                    onChange={(e) => setLogTitle(e.target.value)}
+                    placeholder="例: 雨天対応"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>メモ</label>
+                  <textarea
+                    value={logBody}
+                    onChange={(e) => setLogBody(e.target.value)}
+                    placeholder="現場の状況、変更理由、申し送りを記録"
+                    rows={4}
+                    className="form-textarea"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>写真</label>
+                  <label className="image-picker">
+                    <Camera size={18} />
+                    <span>画像を選択</span>
+                    <input type="file" accept="image/*" multiple onChange={handleLogImageSelect} />
+                  </label>
+                  {logAttachments.length > 0 && (
+                    <div className="selected-attachments">
+                      {logAttachments.map((attachment) => (
+                        <div key={attachment.id} className="selected-attachment">
+                          <button
+                            type="button"
+                            className="selected-attachment-preview"
+                            onClick={() => setPreviewAttachment(attachment)}
+                            aria-label={`${attachment.fileName} を拡大表示`}
+                          >
+                            <img src={attachment.dataUrl} alt={attachment.fileName} />
+                          </button>
+                          <button
+                            type="button"
+                            className="selected-attachment-remove"
+                            onClick={() => handleRemoveLogAttachment(attachment.id)}
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button type="button" className="btn btn-primary" onClick={handleSaveTaskLog}>
+                  <Plus size={16} /> 記録追加
+                </button>
+              </div>
+
+              <div className="task-log-list">
+                {getTaskLogs(logPanelTask.id).length === 0 ? (
+                  <div className="empty-log">この工程の記録はまだありません。</div>
+                ) : (
+                  getTaskLogs(logPanelTask.id).map((log) => (
+                    <article key={log.id} className="task-log-item">
+                      <div className="task-log-date">{formatLogDate(log.logDate)}</div>
+                      <div className="task-log-card">
+                        <span className={`task-log-type ${log.type}`}>{taskLogTypeLabels[log.type]}</span>
+                        <h4>{log.title}</h4>
+                        <p>{log.body}</p>
+                        {log.attachments && log.attachments.length > 0 && (
+                          <div className="log-attachment-thumbs">
+                            {log.attachments.map((attachment) => (
+                              <button
+                                type="button"
+                                key={attachment.id}
+                                className="log-attachment-thumb"
+                                onClick={() => setPreviewAttachment(attachment)}
+                                aria-label={`${attachment.fileName} を拡大表示`}
+                              >
+                                <img src={attachment.dataUrl} alt={attachment.fileName} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+          isOpen={!!previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+          title={previewAttachment?.fileName || '写真'}
+        >
+          {previewAttachment && (
+            <div className="attachment-preview-modal">
+              <img src={previewAttachment.dataUrl} alt={previewAttachment.fileName} />
+            </div>
+          )}
         </Modal>
 
       <style jsx>{`
@@ -672,7 +992,7 @@ function ProjectDetailContent() {
         }
 
         .chart-wrapper :global(.task-bar-container) {
-          height: 34px;
+          height: 40px;
         }
 
         .task-list-panel {
@@ -685,7 +1005,7 @@ function ProjectDetailContent() {
         .task-list-header,
         .task-list-row {
           display: grid;
-          grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) 120px 120px 120px 168px;
+          grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) 120px 120px 120px 104px 168px;
           align-items: center;
           gap: 12px;
         }
@@ -798,6 +1118,34 @@ function ProjectDetailContent() {
           gap: 6px;
         }
 
+        .task-log-action-cell {
+          display: flex;
+          justify-content: flex-start;
+        }
+
+        .task-log-action {
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid var(--primary);
+          border-radius: 9px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+
+        .task-log-action:hover {
+          background: var(--primary);
+          color: var(--text-on-primary);
+        }
+
         .icon-action {
           width: 34px;
           height: 34px;
@@ -879,6 +1227,210 @@ function ProjectDetailContent() {
           border: 1px dashed var(--border);
         }
 
+        .task-log-timeline-panel {
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+        }
+
+        .timeline-panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 16px 18px;
+          background: var(--background);
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-panel-header h3 {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 900;
+        }
+
+        .timeline-panel-header p {
+          margin: 4px 0 0;
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--text-sub);
+        }
+
+        .timeline-panel-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .timeline-count {
+          height: 32px;
+          padding: 0 12px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .timeline-filter {
+          display: inline-flex;
+          padding: 3px;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--surface);
+        }
+
+        .timeline-filter button {
+          height: 32px;
+          padding: 0 12px;
+          border: none;
+          border-radius: 8px;
+          background: transparent;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .timeline-filter button.active {
+          background: var(--primary);
+          color: var(--text-on-primary);
+        }
+
+        .timeline-filter button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .task-log-timeline-list {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .timeline-log-item {
+          display: grid;
+          grid-template-columns: 132px 1fr;
+          gap: 16px;
+          padding: 16px 18px;
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-log-item:last-child {
+          border-bottom: none;
+        }
+
+        .timeline-date {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+          color: var(--text-sub);
+          font-weight: 800;
+          padding-top: 4px;
+        }
+
+        .timeline-date strong {
+          color: var(--text-main);
+          font-size: 13px;
+        }
+
+        .timeline-date span {
+          font-size: 11px;
+        }
+
+        .timeline-card {
+          position: relative;
+          padding: 14px 16px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+        }
+
+        .timeline-card::before {
+          content: "";
+          position: absolute;
+          top: 20px;
+          left: -22px;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: var(--primary);
+          box-shadow: 0 0 0 4px var(--primary-pastel);
+        }
+
+        .timeline-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .timeline-task-name {
+          color: var(--primary);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .timeline-task-count {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .timeline-card h4 {
+          margin: 0 0 6px;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .timeline-card p {
+          margin: 0;
+          color: var(--text-main);
+          line-height: 1.65;
+          white-space: pre-wrap;
+        }
+
+        .log-attachment-thumbs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 12px;
+        }
+
+        .log-attachment-thumb {
+          width: 72px;
+          height: 72px;
+          padding: 0;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--surface-hover);
+          overflow: hidden;
+          cursor: pointer;
+        }
+
+        .log-attachment-thumb img,
+        .selected-attachment-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .timeline-empty {
+          padding: 28px;
+          text-align: center;
+          color: var(--text-sub);
+          font-weight: 700;
+        }
+
         .periods-list-compact {
           display: flex;
           flex-direction: column;
@@ -929,13 +1481,20 @@ function ProjectDetailContent() {
           display: flex;
           flex-wrap: wrap;
           gap: 16px;
-          padding: 12px 20px;
-          background: rgba(255, 255, 255, 0.7);
+          padding: 14px 20px;
+          background: var(--surface);
           backdrop-filter: blur(10px);
           border-radius: var(--radius-md);
           border: 1px solid var(--border-light);
+          box-shadow: var(--shadow-sm);
           align-items: center;
           margin-bottom: 8px;
+        }
+
+        :global(.dark) .filter-bar {
+          background: rgba(32, 34, 38, 0.92);
+          border-color: rgba(255, 255, 255, 0.12);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--shadow-sm);
         }
 
         .filter-group {
@@ -981,9 +1540,269 @@ function ProjectDetailContent() {
           opacity: 0.8;
           display: block;
         }
+
+        .task-log-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .task-log-summary {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          border-radius: var(--radius-md);
+          background: var(--surface-hover);
+          border: 1px solid var(--border-light);
+        }
+
+        .task-log-summary h3 {
+          margin: 0 0 4px;
+          font-size: 18px;
+          font-weight: 800;
+        }
+
+        .task-log-summary p {
+          margin: 0;
+          color: var(--text-sub);
+          font-weight: 700;
+          font-size: 13px;
+        }
+
+        .task-log-summary strong {
+          color: var(--primary);
+          white-space: nowrap;
+          font-size: 13px;
+        }
+
+        .task-log-summary-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .task-log-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .task-log-form .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .task-log-form label {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--text-sub);
+        }
+
+        .task-log-form input,
+        .task-log-form textarea {
+          width: 100%;
+          min-height: 44px;
+          font-size: 15px;
+        }
+
+        .task-log-form .btn {
+          min-height: 48px;
+          font-size: 15px;
+        }
+
+        .image-picker {
+          min-height: 48px;
+          padding: 0 14px;
+          border: 1px dashed var(--primary);
+          border-radius: var(--radius-md);
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .image-picker input {
+          display: none;
+        }
+
+        .selected-attachments {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+          gap: 10px;
+        }
+
+        .selected-attachment {
+          position: relative;
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          background: var(--surface);
+          overflow: hidden;
+        }
+
+        .selected-attachment-preview {
+          width: 100%;
+          aspect-ratio: 1;
+          padding: 0;
+          border: none;
+          background: var(--surface-hover);
+          cursor: pointer;
+          display: block;
+        }
+
+        .selected-attachment-remove {
+          width: 100%;
+          min-height: 32px;
+          border: none;
+          border-top: 1px solid var(--border-light);
+          background: var(--surface);
+          color: var(--danger);
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .task-log-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .task-log-item {
+          display: grid;
+          grid-template-columns: 64px 1fr;
+          gap: 12px;
+          align-items: flex-start;
+        }
+
+        .task-log-date {
+          color: var(--text-sub);
+          font-size: 13px;
+          font-weight: 800;
+          padding-top: 10px;
+          text-align: right;
+        }
+
+        .task-log-card {
+          padding: 14px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-light);
+          background: var(--surface);
+        }
+
+        .task-log-type {
+          display: inline-flex;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          font-size: 11px;
+          font-weight: 900;
+          margin-bottom: 8px;
+        }
+
+        .task-log-card h4 {
+          margin: 0 0 6px;
+          font-size: 15px;
+          font-weight: 800;
+        }
+
+        .task-log-card p {
+          margin: 0;
+          color: var(--text-main);
+          white-space: pre-wrap;
+          line-height: 1.6;
+        }
+
+        .attachment-preview-modal {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          max-height: 72vh;
+          overflow: auto;
+          background: var(--surface-hover);
+          border-radius: var(--radius-md);
+          padding: 12px;
+        }
+
+        .attachment-preview-modal img {
+          max-width: 100%;
+          max-height: 68vh;
+          object-fit: contain;
+          border-radius: var(--radius-sm);
+        }
+
+        .empty-log {
+          padding: 24px;
+          text-align: center;
+          color: var(--text-sub);
+          border: 1px dashed var(--border);
+          border-radius: var(--radius-md);
+        }
+
+        @media (max-width: 760px) {
+          .timeline-panel-header,
+          .timeline-panel-actions,
+          .task-log-summary,
+          .task-log-summary-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .timeline-log-item {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+
+          .timeline-date {
+            align-items: flex-start;
+            flex-direction: row;
+            justify-content: space-between;
+          }
+
+          .timeline-card::before {
+            display: none;
+          }
+        }
       `}</style>
     </div>
   );
+}
+
+function formatLogDate(date: string) {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}/${Number(day)}`;
+}
+
+function formatLogDateFull(date: string) {
+  const [year, month, day] = date.split('-');
+  if (!year || !month || !day) return date;
+  return `${year}-${month}-${day}`;
+}
+
+function formatLogCreatedAt(createdAt?: string) {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function ProjectDetailPage() {
