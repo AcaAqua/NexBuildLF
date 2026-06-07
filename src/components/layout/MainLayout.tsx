@@ -220,7 +220,7 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
 
         .page-wrapper {
           flex: 1;
-          padding: 24px;
+          padding: 24px 24px calc(24px + var(--navbar-height) + env(safe-area-inset-bottom));
           overflow-y: auto;
           display: flex;
           flex-direction: column;

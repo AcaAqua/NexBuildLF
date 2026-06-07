@@ -158,6 +158,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
 
   const handleTaskBarClick = (event: React.MouseEvent, task: Task, date: string) => {
     if (event.detail > 1) {
+      event.preventDefault();
       openTaskEditorFromBar(task);
       return;
     }
@@ -374,7 +375,11 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                 dragElastic={0.05}
                                 onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
                                 onClick={(event) => handleTaskBarClick(event, task, period.start)}
-                                onDoubleClick={() => openTaskEditorFromBar(task)}
+                                onDoubleClick={(event) => {
+                                  event.preventDefault();
+                                  openTaskEditorFromBar(task);
+                                }}
+                                onContextMenu={(event) => event.preventDefault()}
                                 className={`task-bar ${task.status} draggable`}
                                 title={`${periodContext} - 1回タップで記録、2回タップで編集`}
                                 aria-label={`${periodContext}。1回タップで記録、2回タップで編集`}
@@ -673,6 +678,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           transform: translateY(-50%);
           height: 40px;
           z-index: 10;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
         }
 
         .task-bar {
@@ -690,6 +698,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           cursor: grab;
           overflow: visible;
           gap: 8px;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
         }
 
         .task-bar.pending { background: #d2d2d7; color: #86868b; }
