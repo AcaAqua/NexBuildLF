@@ -5,6 +5,7 @@ import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/stora
 import { addDays, parseISO, format } from 'date-fns';
 import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
+import { FIELD_PHOTO_LIMIT_MESSAGE, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
 
 interface TaskFormProps {
   initialData?: Partial<Task>;
@@ -36,6 +37,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       createdAt: new Date().toISOString(),
     }];
   });
+  const [photoMessage, setPhotoMessage] = useState('');
   
   const [partners, setPartners] = useState<Partner[]>([]);
 
@@ -80,18 +82,35 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter(file => file.type.startsWith('image/'));
     if (files.length === 0) return;
+    setPhotoMessage('');
 
-    const now = new Date().toISOString();
-    const resizedPhotos = await Promise.all(files.map(async (file, index) => ({
-      id: `task-photo-${Date.now()}-${index}`,
-      fileName: file.name || `現場写真-${index + 1}.jpg`,
-      fileType: 'image/jpeg',
-      dataUrl: await resizeImageFile(file),
-      createdAt: now,
-    })));
+    const availableSlots = MAX_FIELD_PHOTOS - photos.length;
+    if (availableSlots <= 0) {
+      setPhotoMessage(FIELD_PHOTO_LIMIT_MESSAGE);
+      e.target.value = '';
+      return;
+    }
+    const selectedFiles = files.slice(0, availableSlots);
+    if (selectedFiles.length < files.length) {
+      setPhotoMessage(FIELD_PHOTO_LIMIT_MESSAGE);
+    }
 
-    setPhotos(prev => [...prev, ...resizedPhotos]);
-    e.target.value = '';
+    try {
+      const now = new Date().toISOString();
+      const resizedPhotos = await Promise.all(selectedFiles.map(async (file, index) => ({
+        id: `task-photo-${Date.now()}-${index}`,
+        fileName: file.name || `現場写真-${index + 1}.jpg`,
+        fileType: 'image/jpeg',
+        dataUrl: await resizeImageFile(file),
+        createdAt: now,
+      })));
+
+      setPhotos(prev => [...prev, ...resizedPhotos]);
+    } catch (error) {
+      setPhotoMessage('写真を読み込めませんでした。別の写真を選択してください。');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleRemovePhoto = (photoId: string) => {
@@ -253,6 +272,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
               aria-label="現場写真をアップロード"
             />
           </label>
+          {photoMessage && <p className="photo-message">{photoMessage}</p>}
         </div>
       </div>
 
@@ -581,6 +601,13 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           font-weight: 900;
         }
 
+        .photo-message {
+          margin: 0;
+          color: var(--warning);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
         .btn-remove-photo {
           position: absolute;
           top: 8px;
@@ -638,41 +665,4 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       `}</style>
     </form>
   );
-}
-
-function resizeImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxWidth = 1200;
-        const maxHeight = 1200;
-        let { width, height } = img;
-
-        if (width > height && width > maxWidth) {
-          height *= maxWidth / width;
-          width = maxWidth;
-        } else if (height > maxHeight) {
-          width *= maxHeight / height;
-          height = maxHeight;
-        }
-
-        canvas.width = Math.round(width);
-        canvas.height = Math.round(height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('画像の変換に失敗しました'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
-      };
-      img.onerror = () => reject(new Error('画像を読み込めませんでした'));
-      img.src = String(event.target?.result || '');
-    };
-    reader.onerror = () => reject(reader.error || new Error('ファイルを読み込めませんでした'));
-    reader.readAsDataURL(file);
-  });
 }

@@ -10,6 +10,7 @@ import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
+import { FIELD_PHOTO_LIMIT_MESSAGE, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
 import { Suspense } from 'react';
 
 const taskStatusLabels: Record<Task['status'], string> = {
@@ -84,6 +85,7 @@ function ProjectDetailContent() {
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
   const [timelineTaskId, setTimelineTaskId] = useState<string>('');
   const [timelinePhotoOnly, setTimelinePhotoOnly] = useState(false);
+  const [storageMessage, setStorageMessage] = useState('');
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -102,6 +104,7 @@ function ProjectDetailContent() {
   const handleEditProjectSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!project) return;
+    setStorageMessage('');
     const formData = new FormData(e.currentTarget);
     const updated: Project = {
       ...project,
@@ -110,9 +113,13 @@ function ProjectDetailContent() {
       location: formData.get('location') as string || project.location,
       memo: formData.get('memo') as string || '',
     };
-    storage.saveProject(updated);
-    setProject(updated);
-    setIsEditProjectOpen(false);
+    try {
+      storage.saveProject(updated);
+      setProject(updated);
+      setIsEditProjectOpen(false);
+    } catch (error) {
+      setStorageMessage('案件情報を保存できませんでした。端末内の保存容量を確認してください。');
+    }
   };
 
   // フィルター・ソート済みのタスクを取得
@@ -195,6 +202,7 @@ function ProjectDetailContent() {
 
   const handleSaveTask = (taskData: Omit<Task, 'id'> & { id?: string }) => {
     if (!project) return;
+    setStorageMessage('');
 
     const updatedTasks = [...project.tasks];
     if (taskData.id) {
@@ -210,9 +218,13 @@ function ProjectDetailContent() {
     }
 
     const updatedProject = { ...project, tasks: updatedTasks };
-    storage.saveProject(updatedProject);
-    loadData();
-    setIsModalOpen(false);
+    try {
+      storage.saveProject(updatedProject);
+      loadData();
+      setIsModalOpen(false);
+    } catch (error) {
+      setStorageMessage('保存容量が不足しています。写真を減らすか、設定画面からバックアップ後に不要な写真を整理してください。');
+    }
   };
 
   const getTaskLogs = (taskId?: string, logDate?: string) => {
@@ -239,18 +251,35 @@ function ProjectDetailContent() {
   const handleLogImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
     if (files.length === 0) return;
+    setStorageMessage('');
 
-    const now = new Date().toISOString();
-    const images = await Promise.all(files.map(async (file, index) => ({
-      id: `att-${Date.now()}-${index}`,
-      fileName: file.name,
-      fileType: 'image/jpeg',
-      dataUrl: await resizeImageFile(file),
-      createdAt: now,
-    })));
+    const availableSlots = MAX_FIELD_PHOTOS - logAttachments.length;
+    if (availableSlots <= 0) {
+      setStorageMessage(FIELD_PHOTO_LIMIT_MESSAGE);
+      event.target.value = '';
+      return;
+    }
+    const selectedFiles = files.slice(0, availableSlots);
+    if (selectedFiles.length < files.length) {
+      setStorageMessage(FIELD_PHOTO_LIMIT_MESSAGE);
+    }
 
-    setLogAttachments(prev => [...prev, ...images]);
-    event.target.value = '';
+    try {
+      const now = new Date().toISOString();
+      const images = await Promise.all(selectedFiles.map(async (file, index) => ({
+        id: `att-${Date.now()}-${index}`,
+        fileName: file.name,
+        fileType: 'image/jpeg',
+        dataUrl: await resizeImageFile(file),
+        createdAt: now,
+      })));
+
+      setLogAttachments(prev => [...prev, ...images]);
+    } catch (error) {
+      setStorageMessage('写真を読み込めませんでした。別の写真を選択してください。');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleRemoveLogAttachment = (attachmentId: string) => {
@@ -259,6 +288,7 @@ function ProjectDetailContent() {
 
   const handleSaveTaskLog = () => {
     if (!project || !logPanelTask || (!logBody.trim() && logAttachments.length === 0)) return;
+    setStorageMessage('');
 
     const now = new Date().toISOString();
     const newLog: TaskLog = {
@@ -278,18 +308,27 @@ function ProjectDetailContent() {
       ...project,
       taskLogs: [...(project.taskLogs || []), newLog],
     };
-    storage.saveProject(updated);
-    setProject(updated);
-    setLogTitle('');
-    setLogBody('');
-    setLogAttachments([]);
+    try {
+      storage.saveProject(updated);
+      setProject(updated);
+      setLogTitle('');
+      setLogBody('');
+      setLogAttachments([]);
+    } catch (error) {
+      setStorageMessage('記録を保存できませんでした。端末内の保存容量を超えた可能性があります。写真枚数を減らしてください。');
+    }
   };
 
   const saveTasks = (tasks: Task[]) => {
     if (!project) return;
     const updated: Project = { ...project, tasks };
-    storage.saveProject(updated);
-    setProject(updated);
+    try {
+      storage.saveProject(updated);
+      setProject(updated);
+      setStorageMessage('');
+    } catch (error) {
+      setStorageMessage('工程を保存できませんでした。端末内の保存容量を確認してください。');
+    }
   };
 
   const handleUpdateTaskStatus = (task: Task, status: Task['status']) => {
@@ -336,9 +375,14 @@ function ProjectDetailContent() {
       delete updatedMemos[selectedDate];
     }
     const updated: Project = { ...project, dailyMemos: updatedMemos };
-    storage.saveProject(updated);
-    setProject(updated);
-    setIsDateModalOpen(false);
+    try {
+      storage.saveProject(updated);
+      setProject(updated);
+      setIsDateModalOpen(false);
+      setStorageMessage('');
+    } catch (error) {
+      setStorageMessage('日次メモを保存できませんでした。端末内の保存容量を確認してください。');
+    }
   };
 
   if (!project) return null;
@@ -380,6 +424,12 @@ function ProjectDetailContent() {
             </div>
           )}
         </section>
+
+        {storageMessage && (
+          <div className="storage-warning" role="alert">
+            {storageMessage}
+          </div>
+        )}
 
         {isEditProjectOpen && (
           <Modal isOpen={isEditProjectOpen} title="案件情報の編集" onClose={() => setIsEditProjectOpen(false)}>
@@ -919,6 +969,18 @@ function ProjectDetailContent() {
           border-radius: var(--radius-lg);
           border: 1px solid var(--border-light);
           align-items: center;
+        }
+
+        .storage-warning {
+          margin-top: -16px;
+          padding: 12px 14px;
+          border: 1px solid var(--warning);
+          border-radius: var(--radius-md);
+          background: var(--warning-pastel);
+          color: var(--warning);
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.5;
         }
 
         .info-item {
@@ -2080,43 +2142,6 @@ function formatLogCreatedAt(createdAt?: string) {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return '';
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function resizeImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxWidth = 1200;
-        const maxHeight = 1200;
-        let { width, height } = img;
-
-        if (width > height && width > maxWidth) {
-          height *= maxWidth / width;
-          width = maxWidth;
-        } else if (height > maxHeight) {
-          width *= maxHeight / height;
-          height = maxHeight;
-        }
-
-        canvas.width = Math.round(width);
-        canvas.height = Math.round(height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('画像の変換に失敗しました'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
-      };
-      img.onerror = () => reject(new Error('画像を読み込めませんでした'));
-      img.src = String(event.target?.result || '');
-    };
-    reader.onerror = () => reject(reader.error || new Error('ファイルを読み込めませんでした'));
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function ProjectDetailPage() {
