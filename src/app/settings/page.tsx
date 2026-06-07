@@ -4,11 +4,30 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
-import { storage, Settings as SettingsType } from "@/lib/storage";
+import { storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
+
+interface BackupData {
+  app?: string;
+  version?: number;
+  exportedAt?: string;
+  projects: Project[];
+  partners: Partner[];
+  settings: SettingsType;
+}
+
+interface ImportSummary {
+  projects: number;
+  partners: number;
+  exportedAt?: string;
+  fileName: string;
+}
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsType>({ companyName: '', userName: '', qualifications: '' });
   const [saveMessage, setSaveMessage] = useState('');
+  const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [importMessage, setImportMessage] = useState('');
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -28,7 +47,10 @@ export default function SettingsPage() {
   };
 
   const handleExport = () => {
-    const data = {
+    const data: BackupData = {
+      app: 'kouteikanri',
+      version: 1,
+      exportedAt: new Date().toISOString(),
       projects: storage.getProjects(),
       partners: storage.getPartners(),
       settings: storage.getSettings()
@@ -43,23 +65,53 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const isBackupData = (value: unknown): value is BackupData => {
+    if (!value || typeof value !== 'object') return false;
+    const data = value as Partial<BackupData>;
+    return Array.isArray(data.projects) && Array.isArray(data.partners) && !!data.settings && typeof data.settings === 'object';
+  };
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportMessage('');
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        if (data.projects) localStorage.setItem('kouteikanri_projects', JSON.stringify(data.projects));
-        if (data.partners) localStorage.setItem('kouteikanri_partners', JSON.stringify(data.partners));
-        if (data.settings) storage.saveSettings(data.settings);
-        alert('データを復元しました。ページをリロードします。');
-        window.location.reload();
+        if (!isBackupData(data)) {
+          setImportMessage('バックアップ形式が正しくありません。');
+          e.target.value = '';
+          return;
+        }
+        setPendingImport(data);
+        setImportSummary({
+          projects: data.projects.length,
+          partners: data.partners.length,
+          exportedAt: data.exportedAt,
+          fileName: file.name,
+        });
       } catch (err) {
-        alert('ファイルの読み込みに失敗しました。');
+        setImportMessage('ファイルの読み込みに失敗しました。');
       }
+      e.target.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleConfirmImport = () => {
+    if (!pendingImport) return;
+    localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
+    localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
+    storage.saveSettings(pendingImport.settings);
+    setImportMessage('復元しました。画面を更新します。');
+    window.setTimeout(() => window.location.reload(), 600);
+  };
+
+  const handleCancelImport = () => {
+    setPendingImport(null);
+    setImportSummary(null);
+    setImportMessage('');
   };
 
   const handleReset = () => {
@@ -214,6 +266,38 @@ export default function SettingsPage() {
                 <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
               </label>
             </div>
+            {importMessage && <p className="import-message">{importMessage}</p>}
+            {importSummary && (
+              <div className="import-preview" role="status">
+                <div>
+                  <h3>復元内容の確認</h3>
+                  <p>{importSummary.fileName}</p>
+                </div>
+                <dl>
+                  <div>
+                    <dt>現場</dt>
+                    <dd>{importSummary.projects}件</dd>
+                  </div>
+                  <div>
+                    <dt>協力業者</dt>
+                    <dd>{importSummary.partners}件</dd>
+                  </div>
+                  <div>
+                    <dt>作成日時</dt>
+                    <dd>{formatBackupDate(importSummary.exportedAt)}</dd>
+                  </div>
+                </dl>
+                <p className="restore-warning">現在の保存データは、このバックアップ内容で上書きされます。</p>
+                <div className="restore-actions">
+                  <button type="button" className="btn btn-primary" onClick={handleConfirmImport}>
+                    復元する
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={handleCancelImport}>
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* 危険な操作 */}
@@ -368,6 +452,81 @@ export default function SettingsPage() {
           margin: 0;
         }
 
+        .import-message {
+          margin: 12px 0 0;
+          color: var(--warning);
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .import-preview {
+          margin-top: 16px;
+          padding: 16px;
+          border: 1px solid var(--warning);
+          border-radius: var(--radius-md);
+          background: var(--warning-pastel);
+        }
+
+        .import-preview h3 {
+          margin: 0 0 4px;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .import-preview p {
+          margin: 0;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 700;
+          overflow-wrap: anywhere;
+        }
+
+        .import-preview dl {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin: 14px 0;
+        }
+
+        .import-preview dl div {
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+        }
+
+        .import-preview dt {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .import-preview dd {
+          margin: 4px 0 0;
+          color: var(--text-main);
+          font-size: 14px;
+          font-weight: 900;
+        }
+
+        .restore-warning {
+          color: var(--warning) !important;
+          font-size: 13px !important;
+          font-weight: 900 !important;
+        }
+
+        .restore-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 14px;
+          flex-wrap: wrap;
+        }
+
+        .restore-actions button {
+          min-height: 44px;
+          flex: 1;
+        }
+
         .settings-card.danger {
           border-color: #ffccc7;
           background: #fff1f0;
@@ -427,6 +586,24 @@ export default function SettingsPage() {
           color: var(--primary);
         }
 
+        @media (max-width: 640px) {
+          .settings-page {
+            padding: 16px 12px;
+          }
+
+          .settings-card {
+            padding: 18px;
+          }
+
+          .import-preview dl {
+            grid-template-columns: 1fr;
+          }
+
+          .restore-actions {
+            flex-direction: column;
+          }
+        }
+
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
@@ -434,4 +611,11 @@ export default function SettingsPage() {
       `}</style>
     </MainLayout>
   );
+}
+
+function formatBackupDate(value?: string) {
+  if (!value) return '不明';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '不明';
+  return date.toLocaleString('ja-JP');
 }
