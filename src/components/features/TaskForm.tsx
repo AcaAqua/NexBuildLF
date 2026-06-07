@@ -38,6 +38,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     }];
   });
   const [photoMessage, setPhotoMessage] = useState('');
+  const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
   const photoBytes = photos.reduce((total, item) => total + estimateDataUrlBytes(item.dataUrl), 0);
   
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -81,14 +82,21 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(file => file.type.startsWith('image/'));
+    const input = e.target;
+    const selected = Array.from(input.files || []);
+    const files = selected.filter(file => file.type.startsWith('image/'));
+    if (selected.length > 0 && files.length === 0) {
+      setPhotoMessage('画像ファイルを選択してください。');
+      input.value = '';
+      return;
+    }
     if (files.length === 0) return;
     setPhotoMessage('');
 
     const availableSlots = MAX_FIELD_PHOTOS - photos.length;
     if (availableSlots <= 0) {
       setPhotoMessage(FIELD_PHOTO_LIMIT_MESSAGE);
-      e.target.value = '';
+      input.value = '';
       return;
     }
     const selectedFiles = files.slice(0, availableSlots);
@@ -97,6 +105,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     }
 
     try {
+      setIsPhotoProcessing(true);
       const now = new Date().toISOString();
       const resizedPhotos = await Promise.all(selectedFiles.map(async (file, index) => ({
         id: `task-photo-${Date.now()}-${index}`,
@@ -110,7 +119,8 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     } catch (error) {
       setPhotoMessage('写真を読み込めませんでした。別の写真を選択してください。');
     } finally {
-      e.target.value = '';
+      setIsPhotoProcessing(false);
+      input.value = '';
     }
   };
 
@@ -264,19 +274,34 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
               <span>未添付</span>
             </div>
           )}
-          <label className="photo-upload-btn">
-            <Camera size={22} />
-            <span>{photos.length > 0 ? '写真を追加' : '写真を撮影・添付'}</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              multiple
-              onChange={handlePhotoChange}
-              style={{ display: 'none' }}
-              aria-label="現場写真をアップロード"
-            />
-          </label>
+          <div className="photo-action-row" aria-busy={isPhotoProcessing}>
+            <label className={`photo-upload-btn ${isPhotoProcessing ? 'processing' : ''}`}>
+              <Camera size={22} />
+              <span>{isPhotoProcessing ? '処理中' : '撮影'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                style={{ display: 'none' }}
+                aria-label="カメラで現場写真を撮影"
+                disabled={isPhotoProcessing}
+              />
+            </label>
+            <label className={`photo-upload-btn secondary ${isPhotoProcessing ? 'processing' : ''}`}>
+              <ImageIcon size={22} />
+              <span>{photos.length > 0 ? '写真を追加' : '写真選択'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoChange}
+                style={{ display: 'none' }}
+                aria-label="端末から現場写真を選択"
+                disabled={isPhotoProcessing}
+              />
+            </label>
+          </div>
           {photoMessage && <p className="photo-message">{photoMessage}</p>}
         </div>
       </div>
@@ -565,6 +590,23 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           font-weight: 900;
         }
 
+        .photo-action-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .photo-upload-btn.secondary {
+          border-style: solid;
+          border-color: var(--border-light);
+          background: var(--surface-hover);
+        }
+
+        .photo-upload-btn.processing {
+          opacity: 0.68;
+          pointer-events: none;
+        }
+
         .photo-upload-btn:hover {
           border-color: var(--primary);
           color: var(--primary);
@@ -687,6 +729,10 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
 
           .photo-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .photo-action-row {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

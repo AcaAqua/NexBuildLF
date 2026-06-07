@@ -87,6 +87,7 @@ function ProjectDetailContent() {
   const [logTitle, setLogTitle] = useState('');
   const [logBody, setLogBody] = useState('');
   const [logAttachments, setLogAttachments] = useState<TaskLogAttachment[]>([]);
+  const [isLogImageProcessing, setIsLogImageProcessing] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<TaskLogAttachment | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
   const [timelineTaskId, setTimelineTaskId] = useState<string>('');
@@ -256,14 +257,21 @@ function ProjectDetailContent() {
   };
 
   const handleLogImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    const input = event.target;
+    const selected = Array.from(input.files || []);
+    const files = selected.filter(file => file.type.startsWith('image/'));
+    if (selected.length > 0 && files.length === 0) {
+      setStorageMessage('画像ファイルを選択してください。');
+      input.value = '';
+      return;
+    }
     if (files.length === 0) return;
     setStorageMessage('');
 
     const availableSlots = MAX_FIELD_PHOTOS - logAttachments.length;
     if (availableSlots <= 0) {
       setStorageMessage(FIELD_PHOTO_LIMIT_MESSAGE);
-      event.target.value = '';
+      input.value = '';
       return;
     }
     const selectedFiles = files.slice(0, availableSlots);
@@ -272,6 +280,7 @@ function ProjectDetailContent() {
     }
 
     try {
+      setIsLogImageProcessing(true);
       const now = new Date().toISOString();
       const images = await Promise.all(selectedFiles.map(async (file, index) => ({
         id: `att-${Date.now()}-${index}`,
@@ -285,7 +294,8 @@ function ProjectDetailContent() {
     } catch (error) {
       setStorageMessage('写真を読み込めませんでした。別の写真を選択してください。');
     } finally {
-      event.target.value = '';
+      setIsLogImageProcessing(false);
+      input.value = '';
     }
   };
 
@@ -816,11 +826,32 @@ function ProjectDetailContent() {
                     <span>{logAttachments.length}/{MAX_FIELD_PHOTOS}枚</span>
                     <span>{formatDataSize(logAttachmentBytes)}</span>
                   </div>
-                  <label className="image-picker">
-                    <Camera size={18} />
-                    <span>{logAttachments.length > 0 ? '写真を追加' : '写真を撮影・添付'}</span>
-                    <input type="file" accept="image/*" capture="environment" multiple onChange={handleLogImageSelect} />
-                  </label>
+                  <div className="image-picker-row" aria-busy={isLogImageProcessing}>
+                    <label className={`image-picker ${isLogImageProcessing ? 'processing' : ''}`}>
+                      <Camera size={18} />
+                      <span>{isLogImageProcessing ? '処理中' : '撮影'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleLogImageSelect}
+                        disabled={isLogImageProcessing}
+                        aria-label="カメラで工程記録写真を撮影"
+                      />
+                    </label>
+                    <label className={`image-picker secondary ${isLogImageProcessing ? 'processing' : ''}`}>
+                      <FileText size={18} />
+                      <span>{logAttachments.length > 0 ? '写真を追加' : '写真選択'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleLogImageSelect}
+                        disabled={isLogImageProcessing}
+                        aria-label="端末から工程記録写真を選択"
+                      />
+                    </label>
+                  </div>
                   {logAttachments.length > 0 && (
                     <div className="selected-attachments">
                       {logAttachments.map((attachment) => (
@@ -1967,6 +1998,24 @@ function ProjectDetailContent() {
           cursor: pointer;
         }
 
+        .image-picker-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .image-picker.secondary {
+          border-style: solid;
+          border-color: var(--border-light);
+          background: var(--surface-hover);
+          color: var(--text-main);
+        }
+
+        .image-picker.processing {
+          opacity: 0.68;
+          pointer-events: none;
+        }
+
         .photo-save-summary {
           min-height: 34px;
           padding: 0 12px;
@@ -2185,6 +2234,10 @@ function ProjectDetailContent() {
 
           .selected-attachments {
             grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .image-picker-row {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
