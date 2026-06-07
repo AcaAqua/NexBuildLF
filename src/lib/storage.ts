@@ -51,7 +51,7 @@ export interface Project {
   id: string;
   title: string;
   type: string;
-  status: 'planning' | 'in_progress' | 'completed';
+  status: 'planning' | 'in_progress' | 'delayed' | 'completed';
   location: string;
   progress: number;
   updatedAt: string;
@@ -65,8 +65,12 @@ export interface Project {
 export interface Partner {
   id: string;
   name: string;
-  role: string;
+  role?: string;
+  company?: string;
+  type?: string;
   phone?: string;
+  email?: string;
+  notes?: string;
 }
 
 export interface Settings {

@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { format, addDays, startOfDay, differenceInDays, min, max, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { Maximize, Minimize } from 'lucide-react';
-import { storage, Task, TaskLog } from '@/lib/storage';
+import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -18,14 +18,15 @@ interface GanttChartProps {
   onOpenTaskLog?: (task: Task, date: string) => void;
 }
 
-const getTaskPeriods = (task: Task) => {
+const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) {
     return task.periods;
   }
 
   const start = task.startDate || task.start_date;
+  if (!start) return [];
   const end = task.endDate || task.end_date || start;
-  return start ? [{ start, end }] : [];
+  return [{ start, end }];
 };
 
 export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {

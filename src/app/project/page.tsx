@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
-import { storage, Project, Task, TaskLog, TaskLogAttachment } from "@/lib/storage";
+import { storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
@@ -26,11 +26,12 @@ const taskLogTypeLabels: Record<TaskLog['type'], string> = {
   handoff: '申し送り',
 };
 
-const getTaskPeriods = (task: Task) => {
+const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) return task.periods;
   const start = task.startDate || task.start_date;
+  if (!start) return [];
   const end = task.endDate || task.end_date || start;
-  return start ? [{ start, end }] : [];
+  return [{ start, end }];
 };
 
 const getTaskDateRange = (task: Task) => {
