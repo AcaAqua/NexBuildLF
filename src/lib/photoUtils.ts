@@ -4,8 +4,15 @@ export const MAX_FIELD_PHOTOS = 12;
 export const FIELD_PHOTO_LIMIT_MESSAGE = `写真は1つの工程・記録につき最大${MAX_FIELD_PHOTOS}枚までです。`;
 
 export function formatDataSize(bytes: number) {
+  if (bytes <= 0) return '0KB';
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
+export function estimateDataUrlBytes(dataUrl: string) {
+  const base64 = dataUrl.split(',')[1] || '';
+  if (!base64) return 0;
+  return Math.floor((base64.length * 3) / 4);
 }
 
 export function resizeImageFile(file: File): Promise<string> {

@@ -62,7 +62,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
         </motion.div>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
         .modal-overlay {
           position: fixed;
           top: 0;
