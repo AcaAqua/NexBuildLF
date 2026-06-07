@@ -2,7 +2,7 @@
 
 import React from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import { Info, ShieldCheck, Zap, Heart, Mail } from 'lucide-react';
+import { Info, ShieldCheck, Zap, Heart, Mail, Smartphone, Tablet, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function AboutPage() {
@@ -43,6 +43,28 @@ export default function AboutPage() {
               <p>Apple製品のような美学を取り入れ、使うたびに心地よいデザインを追求しています。</p>
             </div>
           </div>
+
+          <section className="about-section glass field-ready">
+            <h2><CheckCircle2 className="section-icon" /> 現場端末の確認項目</h2>
+            <div className="device-grid">
+              <div>
+                <div className="device-heading"><Smartphone size={20} /> スマートフォン</div>
+                <ul>
+                  <li>工程のダブルタップ編集</li>
+                  <li>工程表のピンチ拡大縮小</li>
+                  <li>写真添付と日報入力</li>
+                </ul>
+              </div>
+              <div>
+                <div className="device-heading"><Tablet size={20} /> タブレット</div>
+                <ul>
+                  <li>横向き工程表の視認性</li>
+                  <li>日付・期間・状態の一覧性</li>
+                  <li>バックアップと復元確認</li>
+                </ul>
+              </div>
+            </div>
+          </section>
 
           <section className="about-section glass warning">
             <h2><Info className="section-icon" /> テスト版（TestFlight）について</h2>
@@ -154,6 +176,49 @@ export default function AboutPage() {
           color: var(--warning);
         }
 
+        .field-ready {
+          background: var(--surface);
+        }
+
+        .device-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        .device-grid > div {
+          padding: 16px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface-hover);
+        }
+
+        .device-heading {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 10px;
+          color: var(--text-main);
+          font-size: 14px;
+          font-weight: 900;
+        }
+
+        .device-heading svg {
+          color: var(--primary);
+          flex-shrink: 0;
+        }
+
+        .device-grid ul {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin: 0;
+          padding-left: 18px;
+          color: var(--text-sub);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
         .features-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -161,8 +226,19 @@ export default function AboutPage() {
         }
 
         @media (max-width: 600px) {
-          .features-grid {
+          .features-grid,
+          .device-grid {
             grid-template-columns: 1fr;
+          }
+
+          .about-page {
+            padding: 24px 14px;
+          }
+
+          .about-header h1 {
+            flex-direction: column;
+            gap: 8px;
+            font-size: 28px;
           }
         }
 
