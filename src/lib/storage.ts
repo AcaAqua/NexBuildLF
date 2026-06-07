@@ -91,6 +91,22 @@ export interface Settings {
 
 const STORAGE_KEY = 'kouteikanri_projects';
 
+export function isStorageQuotaError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { name?: string; code?: number };
+  return candidate.name === 'QuotaExceededError'
+    || candidate.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || candidate.code === 22
+    || candidate.code === 1014;
+}
+
+export function getStorageWriteErrorMessage(error: unknown, action = '保存') {
+  if (isStorageQuotaError(error)) {
+    return `${action}できませんでした。端末の保存容量が不足しています。写真を減らすか、設定画面でバックアップ後に不要な写真を整理してください。`;
+  }
+  return `${action}できませんでした。端末の保存状態を確認して、もう一度試してください。`;
+}
+
 export const storage = {
   // 全プロジェクト取得
   getProjects: (): Project[] => {

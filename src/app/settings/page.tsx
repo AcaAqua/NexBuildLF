@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
-import { storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
+import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
 
 interface BackupData {
@@ -41,12 +41,16 @@ export default function SettingsPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    storage.saveSettings(settings);
-    setSaveMessage('設定を保存しました。');
-    // UIスケールの変更を即時反映させる
-    document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
-    document.body.classList.add(`ui-size-${settings.uiScale || 'md'}`);
-    setTimeout(() => setSaveMessage(''), 3000);
+    try {
+      storage.saveSettings(settings);
+      setSaveMessage('設定を保存しました。');
+      // UIスケールの変更を即時反映させる
+      document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
+      document.body.classList.add(`ui-size-${settings.uiScale || 'md'}`);
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      setSaveMessage(getStorageWriteErrorMessage(error, '設定を保存'));
+    }
   };
 
   const handleExport = () => {
@@ -113,7 +117,7 @@ export default function SettingsPage() {
       setImportMessage('復元しました。画面を更新します。');
       window.setTimeout(() => window.location.reload(), 600);
     } catch (error) {
-      setImportMessage('復元できませんでした。端末の保存容量を超えた可能性があります。写真枚数やバックアップ容量を確認してください。');
+      setImportMessage(getStorageWriteErrorMessage(error, 'バックアップを復元'));
     }
   };
 
@@ -247,7 +251,11 @@ export default function SettingsPage() {
                 <button type="submit" className="btn btn-primary">
                   <Save size={18} /> 保存する
                 </button>
-                {saveMessage && <span className="save-msg">{saveMessage}</span>}
+                {saveMessage && (
+                  <span className={`save-msg ${saveMessage.includes('できません') ? 'error' : ''}`} role="status">
+                    {saveMessage}
+                  </span>
+                )}
               </div>
             </form>
           </section>
@@ -417,6 +425,10 @@ export default function SettingsPage() {
           font-size: 13px;
           font-weight: 700;
           animation: fadeIn 0.3s ease;
+        }
+
+        .save-msg.error {
+          color: var(--warning);
         }
 
         .backup-actions {

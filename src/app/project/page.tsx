@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
-import { storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
+import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
@@ -125,7 +125,7 @@ function ProjectDetailContent() {
       setProject(updated);
       setIsEditProjectOpen(false);
     } catch (error) {
-      setStorageMessage('案件情報を保存できませんでした。端末内の保存容量を確認してください。');
+      setStorageMessage(getStorageWriteErrorMessage(error, '案件情報を保存'));
     }
   };
 
@@ -231,7 +231,7 @@ function ProjectDetailContent() {
       loadData();
       setIsModalOpen(false);
     } catch (error) {
-      setStorageMessage('保存容量が不足しています。写真を減らすか、設定画面からバックアップ後に不要な写真を整理してください。');
+      setStorageMessage(getStorageWriteErrorMessage(error, '工程を保存'));
     }
   };
 
@@ -332,7 +332,7 @@ function ProjectDetailContent() {
       setLogBody('');
       setLogAttachments([]);
     } catch (error) {
-      setStorageMessage('記録を保存できませんでした。端末内の保存容量を超えた可能性があります。写真枚数を減らしてください。');
+      setStorageMessage(getStorageWriteErrorMessage(error, '記録を保存'));
     }
   };
 
@@ -344,7 +344,7 @@ function ProjectDetailContent() {
       setProject(updated);
       setStorageMessage('');
     } catch (error) {
-      setStorageMessage('工程を保存できませんでした。端末内の保存容量を確認してください。');
+      setStorageMessage(getStorageWriteErrorMessage(error, '工程を保存'));
     }
   };
 
@@ -398,7 +398,7 @@ function ProjectDetailContent() {
       setIsDateModalOpen(false);
       setStorageMessage('');
     } catch (error) {
-      setStorageMessage('日次メモを保存できませんでした。端末内の保存容量を確認してください。');
+      setStorageMessage(getStorageWriteErrorMessage(error, '日次メモを保存'));
     }
   };
 
