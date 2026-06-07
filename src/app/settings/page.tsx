@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
 import { storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
+import { formatDataSize } from "@/lib/photoUtils";
 
 interface BackupData {
   app?: string;
@@ -18,6 +19,8 @@ interface BackupData {
 interface ImportSummary {
   projects: number;
   partners: number;
+  photos: number;
+  dataSize: number;
   exportedAt?: string;
   fileName: string;
 }
@@ -88,6 +91,8 @@ export default function SettingsPage() {
         setImportSummary({
           projects: data.projects.length,
           partners: data.partners.length,
+          photos: countBackupPhotos(data.projects),
+          dataSize: file.size,
           exportedAt: data.exportedAt,
           fileName: file.name,
         });
@@ -101,11 +106,15 @@ export default function SettingsPage() {
 
   const handleConfirmImport = () => {
     if (!pendingImport) return;
-    localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
-    localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
-    storage.saveSettings(pendingImport.settings);
-    setImportMessage('復元しました。画面を更新します。');
-    window.setTimeout(() => window.location.reload(), 600);
+    try {
+      localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
+      localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
+      storage.saveSettings(pendingImport.settings);
+      setImportMessage('復元しました。画面を更新します。');
+      window.setTimeout(() => window.location.reload(), 600);
+    } catch (error) {
+      setImportMessage('復元できませんでした。端末の保存容量を超えた可能性があります。写真枚数やバックアップ容量を確認してください。');
+    }
   };
 
   const handleCancelImport = () => {
@@ -285,6 +294,14 @@ export default function SettingsPage() {
                   <div>
                     <dt>作成日時</dt>
                     <dd>{formatBackupDate(importSummary.exportedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>写真</dt>
+                    <dd>{importSummary.photos}枚</dd>
+                  </div>
+                  <div>
+                    <dt>容量</dt>
+                    <dd>{formatDataSize(importSummary.dataSize)}</dd>
                   </div>
                 </dl>
                 <p className="restore-warning">現在の保存データは、このバックアップ内容で上書きされます。</p>
@@ -611,6 +628,18 @@ export default function SettingsPage() {
       `}</style>
     </MainLayout>
   );
+}
+
+function countBackupPhotos(projects: Project[]) {
+  return projects.reduce((total, project) => {
+    const taskPhotos = project.tasks.reduce((taskTotal, task) => {
+      return taskTotal + (task.photos?.length || (task.photo ? 1 : 0));
+    }, 0);
+    const logPhotos = (project.taskLogs || []).reduce((logTotal, log) => {
+      return logTotal + (log.attachments?.length || 0);
+    }, 0);
+    return total + taskPhotos + logPhotos;
+  }, 0);
 }
 
 function formatBackupDate(value?: string) {
