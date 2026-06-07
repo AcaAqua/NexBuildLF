@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, Plus } from 'lucide-react';
+import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, Plus, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { storage } from "@/lib/storage";
@@ -25,6 +25,7 @@ const navItems = [
 export default function MainLayout({ children, hideNav = false }: MainLayoutProps) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     // UIスケールの適用
@@ -32,7 +33,31 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
     const scale = settings.uiScale || 'md';
     document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
     document.body.classList.add(`ui-size-${scale}`);
+    setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    fetch('/sw.js', { method: 'HEAD', cache: 'no-store' })
+      .then((response) => {
+        if (!response.ok) return;
+        return navigator.serviceWorker.register('/sw.js');
+      })
+      .catch((error) => {
+        console.warn('Service worker registration failed', error);
+      });
   }, []);
 
   if (!mounted) return <div className="app-shell" style={{ background: 'var(--background)' }} />;
@@ -70,6 +95,12 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
         )}
 
         <div className="page-wrapper">
+          {isOffline && (
+            <div className="offline-banner" role="status" aria-live="polite">
+              <WifiOff size={16} />
+              <span>オフライン中。保存済みの工程表と記録を表示しています。</span>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -195,6 +226,25 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
           flex-direction: column;
         }
 
+        .offline-banner {
+          position: sticky;
+          top: 0;
+          z-index: 6;
+          min-height: 44px;
+          margin: 0 0 16px;
+          padding: 10px 14px;
+          border: 1px solid var(--warning);
+          border-radius: var(--radius-md);
+          background: var(--warning-pastel);
+          color: var(--warning);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 900;
+          box-shadow: var(--shadow-sm);
+        }
+
         .app-footer {
           margin-top: auto;
           padding-top: 48px;
@@ -273,6 +323,10 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
           }
           .page-wrapper {
             padding: 40px;
+          }
+
+          .offline-banner {
+            top: 0;
           }
         }
       `}</style>
