@@ -27,7 +27,7 @@ function MeetingContent() {
 
   if (loading) {
     return (
-      <div className="loading-state">
+      <div className="meeting-loading-state">
         <Loader2 className="animate-spin" />
         <span>読み込み中...</span>
       </div>
@@ -36,7 +36,7 @@ function MeetingContent() {
 
   if (!project) {
     return (
-      <div className="error-state">
+      <div className="meeting-error-state">
         <h2>プロジェクトが見つかりません</h2>
         <button onClick={() => router.back()} className="btn btn-outline">
           <ArrowLeft size={18} /> 戻る
@@ -83,7 +83,7 @@ export default function MeetingModePage() {
   return (
     <MainLayout hideNav={true}>
       <Suspense fallback={
-        <div className="loading-state">
+        <div className="meeting-loading-state">
           <Loader2 className="animate-spin" />
           <span>読み込み中...</span>
         </div>
@@ -91,7 +91,7 @@ export default function MeetingModePage() {
         <MeetingContent />
       </Suspense>
 
-      <style jsx>{`
+      <style jsx global>{`
         .meeting-page {
           height: 100vh;
           display: flex;
@@ -99,7 +99,7 @@ export default function MeetingModePage() {
           background: var(--background);
         }
 
-        .meeting-header {
+        .meeting-page .meeting-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -108,15 +108,19 @@ export default function MeetingModePage() {
           z-index: 100;
         }
 
-        .header-left {
+        .meeting-page .header-left {
           display: flex;
           align-items: center;
           gap: 20px;
         }
 
-        .back-btn {
-          width: 40px;
-          height: 40px;
+        .meeting-page .back-btn {
+          width: 44px;
+          min-width: 44px;
+          height: 44px;
+          flex: 0 0 44px;
+          box-sizing: border-box;
+          padding: 0;
           border-radius: 50%;
           border: 1px solid var(--border-light);
           background: var(--surface);
@@ -127,19 +131,19 @@ export default function MeetingModePage() {
           transition: all 0.2s;
         }
 
-        .back-btn:hover {
+        .meeting-page .back-btn:hover {
           background: var(--surface-hover);
           transform: translateX(-2px);
         }
 
-        .title-group h1 {
+        .meeting-page .title-group h1 {
           font-size: 18px;
           font-weight: 800;
           margin: 0;
           color: var(--text-main);
         }
 
-        .badge {
+        .meeting-page .badge {
           font-size: 10px;
           font-weight: 800;
           background: var(--primary-pastel);
@@ -151,19 +155,19 @@ export default function MeetingModePage() {
           display: inline-block;
         }
 
-        .location {
+        .meeting-page .location {
           font-size: 13px;
           color: var(--text-sub);
           font-weight: 600;
         }
 
-        .meeting-content {
+        .meeting-page .meeting-content {
           flex: 1;
           overflow: hidden;
           padding: 12px;
         }
 
-        .loading-state, .error-state {
+        .meeting-loading-state, .meeting-error-state {
           height: 100vh;
           display: flex;
           flex-direction: column;
@@ -173,7 +177,7 @@ export default function MeetingModePage() {
           color: var(--text-sub);
         }
 
-        .error-state h2 {
+        .meeting-error-state h2 {
           color: var(--text-main);
         }
       `}</style>

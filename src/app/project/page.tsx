@@ -1213,7 +1213,7 @@ function ProjectDetailContent() {
 
         .status-select {
           width: 100%;
-          height: 34px;
+          min-height: 44px;
           border-radius: 9px;
           border: 1px solid var(--border-light);
           background: var(--surface);
@@ -1283,7 +1283,10 @@ function ProjectDetailContent() {
 
         .icon-action {
           width: 44px;
+          min-width: 44px;
           height: 44px;
+          flex: 0 0 44px;
+          box-sizing: border-box;
           border: 1px solid var(--border-light);
           border-radius: 9px;
           background: var(--surface);
@@ -1421,8 +1424,8 @@ function ProjectDetailContent() {
         }
 
         .timeline-filter button {
-          height: 32px;
-          padding: 0 12px;
+          min-height: 44px;
+          padding: 0 14px;
           border: none;
           border-radius: 8px;
           background: transparent;
@@ -1443,7 +1446,7 @@ function ProjectDetailContent() {
         }
 
         .timeline-photo-filter {
-          min-height: 40px;
+          min-height: 44px;
           padding: 0 12px;
           border: 1px solid var(--border-light);
           border-radius: 10px;
@@ -1768,7 +1771,8 @@ function ProjectDetailContent() {
         }
 
         .filter-group select {
-          padding: 6px 12px;
+          min-height: 44px;
+          padding: 8px 12px;
           border-radius: 8px;
           border: 1px solid var(--border-light);
           background: var(--surface);

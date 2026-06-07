@@ -160,7 +160,9 @@ export default function Home() {
                   <Link 
                     href={`/meeting?projectId=${project.id}`}
                     title="打ち合わせモード (全画面)"
+                    aria-label="打ち合わせモード (全画面)"
                     className="project-action-btn meeting"
+                    style={{ width: 44, minWidth: 44, height: 44, flex: '0 0 44px' }}
                   >
                     <LayoutGrid size={16} />
                   </Link>
@@ -314,8 +316,11 @@ export default function Home() {
 
         .project-action-btn,
         .delete-btn {
-          width: 36px;
-          height: 36px;
+          width: 44px;
+          min-width: 44px;
+          height: 44px;
+          flex: 0 0 44px;
+          box-sizing: border-box;
           padding: 0;
           border-radius: 10px;
           border: 1px solid var(--border-light);
@@ -327,6 +332,12 @@ export default function Home() {
           justify-content: center;
           box-shadow: 0 8px 18px rgba(0, 71, 160, 0.08);
           transition: all 0.2s;
+        }
+
+        .project-card-actions a {
+          min-width: 44px;
+          width: 44px;
+          flex-basis: 44px;
         }
 
         .project-action-btn.meeting {
