@@ -83,6 +83,7 @@ function ProjectDetailContent() {
   const [previewAttachment, setPreviewAttachment] = useState<TaskLogAttachment | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'selected'>('all');
   const [timelineTaskId, setTimelineTaskId] = useState<string>('');
+  const [timelinePhotoOnly, setTimelinePhotoOnly] = useState(false);
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -160,12 +161,25 @@ function ProjectDetailContent() {
     if (!project) return [];
     return [...(project.taskLogs || [])]
       .filter(log => timelineFilter === 'all' || !timelineTaskId || log.taskId === timelineTaskId)
+      .filter(log => !timelinePhotoOnly || (log.attachments && log.attachments.length > 0))
       .sort((a, b) => {
         const bTime = b.createdAt || b.logDate;
         const aTime = a.createdAt || a.logDate;
         return bTime.localeCompare(aTime);
       });
-  }, [project, timelineFilter, timelineTaskId]);
+  }, [project, timelineFilter, timelineTaskId, timelinePhotoOnly]);
+
+  const timelineTaskSummaries = useMemo(() => {
+    if (!project) return [];
+    const logs = project.taskLogs || [];
+    return project.tasks
+      .map(task => ({
+        task,
+        count: logs.filter(log => log.taskId === task.id).length,
+        photoCount: logs.filter(log => log.taskId === task.id && log.attachments && log.attachments.length > 0).length,
+      }))
+      .filter(summary => summary.count > 0);
+  }, [project]);
 
   const selectedTimelineTask = timelineTaskId ? taskById.get(timelineTaskId) : undefined;
 
@@ -566,18 +580,49 @@ function ProjectDetailContent() {
                     選択工程のみ
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className={`timeline-photo-filter ${timelinePhotoOnly ? 'active' : ''}`}
+                  onClick={() => setTimelinePhotoOnly(value => !value)}
+                >
+                  <Camera size={14} />
+                  写真あり
+                </button>
               </div>
             </div>
 
+            {timelineTaskSummaries.length > 0 && (
+              <div className="timeline-task-filter-row" aria-label="工程記録の工程別フィルター">
+                {timelineTaskSummaries.map(({ task, count, photoCount }) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className={`timeline-task-chip ${timelineTaskId === task.id && timelineFilter === 'selected' ? 'active' : ''}`}
+                    onClick={() => {
+                      setTimelineTaskId(task.id);
+                      setTimelineFilter('selected');
+                    }}
+                  >
+                    <span>{task.title}</span>
+                    <strong>{count}</strong>
+                    {photoCount > 0 && <em>{photoCount}写真</em>}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {timelineLogs.length === 0 ? (
               <div className="timeline-empty">
-                {timelineFilter === 'selected' ? '選択中の工程記録はまだありません。' : '工程記録はまだありません。'}
+                {timelinePhotoOnly
+                  ? '写真付きの工程記録はまだありません。'
+                  : timelineFilter === 'selected' ? '選択中の工程記録はまだありません。' : '工程記録はまだありません。'}
               </div>
             ) : (
               <div className="task-log-timeline-list">
                 {timelineLogs.map((log) => {
                   const task = taskById.get(log.taskId);
                   const taskLogCount = getTaskLogs(log.taskId).length;
+                  const attachmentCount = log.attachments?.length || 0;
                   return (
                     <article key={log.id} className="timeline-log-item">
                       <div className="timeline-date">
@@ -589,8 +634,14 @@ function ProjectDetailContent() {
                           <span className="timeline-task-name">{task?.title || '工程未設定'}</span>
                           <span className="timeline-task-count">記録 {taskLogCount}件</span>
                         </div>
-                        <h4>{log.title}</h4>
-                        <p>{log.body}</p>
+                        <div className="timeline-log-title-row">
+                          <span className={`timeline-log-type type-${log.type}`}>
+                            {taskLogTypeLabels[log.type]}
+                          </span>
+                          <h4>{log.title}</h4>
+                          {attachmentCount > 0 && <span className="timeline-attachment-count">{attachmentCount}枚</span>}
+                        </div>
+                        <p>{log.body || (attachmentCount > 0 ? '写真のみの記録' : '')}</p>
                         {log.attachments && log.attachments.length > 0 && (
                           <div className="log-attachment-thumbs">
                             {log.attachments.map((attachment) => (
@@ -1329,6 +1380,86 @@ function ProjectDetailContent() {
           cursor: not-allowed;
         }
 
+        .timeline-photo-filter {
+          min-height: 40px;
+          padding: 0 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--surface);
+          color: var(--text-sub);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .timeline-photo-filter.active {
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+          color: var(--primary);
+        }
+
+        .timeline-task-filter-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 12px 18px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-task-chip {
+          min-height: 42px;
+          padding: 0 10px;
+          border: 1px solid var(--border-light);
+          border-radius: 10px;
+          background: var(--background);
+          color: var(--text-main);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .timeline-task-chip span {
+          max-width: 160px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .timeline-task-chip strong,
+        .timeline-task-chip em {
+          min-width: 24px;
+          height: 24px;
+          padding: 0 7px;
+          border-radius: 999px;
+          background: var(--surface);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-style: normal;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .timeline-task-chip em {
+          background: var(--success-pastel);
+          color: var(--success);
+        }
+
+        .timeline-task-chip.active {
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+        }
+
         .task-log-timeline-list {
           display: flex;
           flex-direction: column;
@@ -1407,7 +1538,7 @@ function ProjectDetailContent() {
         }
 
         .timeline-card h4 {
-          margin: 0 0 6px;
+          margin: 0;
           color: var(--text-main);
           font-size: 15px;
           font-weight: 900;
@@ -1420,6 +1551,48 @@ function ProjectDetailContent() {
           white-space: pre-wrap;
         }
 
+        .timeline-log-title-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .timeline-log-type {
+          min-height: 26px;
+          padding: 0 8px;
+          border-radius: 999px;
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          display: inline-flex;
+          align-items: center;
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .timeline-log-type.type-photo {
+          background: var(--success-pastel);
+          color: var(--success);
+        }
+
+        .timeline-log-type.type-handoff {
+          background: var(--warning-pastel);
+          color: var(--warning);
+        }
+
+        .timeline-attachment-count {
+          min-height: 26px;
+          padding: 0 8px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          font-size: 11px;
+          font-weight: 900;
+        }
+
         .log-attachment-thumbs {
           display: flex;
           flex-wrap: wrap;
@@ -1428,8 +1601,8 @@ function ProjectDetailContent() {
         }
 
         .log-attachment-thumb {
-          width: 72px;
-          height: 72px;
+          width: 88px;
+          height: 88px;
           padding: 0;
           border: 1px solid var(--border-light);
           border-radius: 10px;
@@ -1820,9 +1993,34 @@ function ProjectDetailContent() {
             flex-direction: column;
           }
 
+          .timeline-filter,
+          .timeline-photo-filter {
+            width: 100%;
+          }
+
+          .timeline-filter button {
+            flex: 1;
+            min-height: 42px;
+          }
+
+          .timeline-task-filter-row {
+            padding: 10px 12px;
+          }
+
+          .timeline-task-chip {
+            flex: 1 1 100%;
+            justify-content: space-between;
+            min-height: 48px;
+          }
+
+          .timeline-task-chip span {
+            max-width: none;
+          }
+
           .timeline-log-item {
             grid-template-columns: 1fr;
             gap: 8px;
+            padding: 14px 12px;
           }
 
           .timeline-date {
@@ -1833,6 +2031,17 @@ function ProjectDetailContent() {
 
           .timeline-card::before {
             display: none;
+          }
+
+          .timeline-card {
+            padding: 14px;
+          }
+
+          .log-attachment-thumb {
+            width: calc((100vw - 80px) / 3);
+            height: calc((100vw - 80px) / 3);
+            max-width: 104px;
+            max-height: 104px;
           }
 
           .task-log-form input,
