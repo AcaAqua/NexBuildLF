@@ -486,20 +486,9 @@ function ProjectDetailContent() {
           </Modal>
         )}
 
-        <section className="content-section">
-          <div className="section-header">
-            <div className="section-title">
-              <h2>工程表</h2>
-              <span>工程バーを中心に日程と担当を確認</span>
-            </div>
-            
-            <button className="btn btn-primary btn-sm" onClick={() => { setEditingTask(undefined); setIsModalOpen(true); }}>
-              <Plus size={18} />
-              <span>工程追加</span>
-            </button>
-          </div>
-
-          <div className="workspace-tabs" role="tablist" aria-label="工程表表示切替">
+        <section className="project-workspace" aria-label="案件内メニュー">
+          <div className="project-browser-tabs glass">
+            <div className="workspace-tabs" role="tablist" aria-label="案件内表示切替">
             <button
               type="button"
               role="tab"
@@ -528,44 +517,72 @@ function ProjectDetailContent() {
               onClick={() => setWorkspaceTab('timeline')}
             >
               <History size={18} />
-              <span>記録</span>
+              <span>工程記録タイムライン</span>
+            </button>
+            </div>
+
+            <button className="btn btn-primary btn-sm workspace-add-task" onClick={() => { setEditingTask(undefined); setIsModalOpen(true); }}>
+              <Plus size={18} />
+              <span>工程追加</span>
             </button>
           </div>
 
-          <div className="filter-bar glass">
-            <div className="filter-group">
-              <label>状態:</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="ステータスでフィルタ">
-                <option value="all">すべて</option>
-                <option value="pending">未着手</option>
-                <option value="doing">進行中</option>
-                <option value="done">完了</option>
-                <option value="hold">保留</option>
-              </select>
+          <div className="project-tab-body">
+            <div className="workspace-panel-heading">
+              <div className="section-title">
+                <h2>
+                  {workspaceTab === 'chart'
+                    ? '工程表'
+                    : workspaceTab === 'tasks'
+                      ? '工程一覧'
+                      : '工程記録タイムライン'}
+                </h2>
+                <span>
+                  {workspaceTab === 'chart'
+                    ? '横長チャートを広く使って日程と担当を確認'
+                    : workspaceTab === 'tasks'
+                      ? '工程ごとの状態・担当・記録を一覧で管理'
+                      : '写真・メモ・申し送りを時系列で確認'}
+                </span>
+              </div>
             </div>
-            <div className="filter-group">
-              <label>業者:</label>
-              <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} aria-label="業者でフィルタ">
-                <option value="all">すべての業者</option>
-                {(allAssignees as string[]).map((name: string) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
-              <label>並び順:</label>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} aria-label="並び順">
-                <option value="manual">手動（カスタム）</option>
-                <option value="date">日付順</option>
-                <option value="assignee">業者順</option>
-              </select>
-            </div>
-            { (statusFilter !== 'all' || assigneeFilter !== 'all') && (
-              <button className="btn-clear" onClick={() => { setStatusFilter('all'); setAssigneeFilter('all'); }}>
-                解除
-              </button>
-            ) }
-          </div>
+
+            {workspaceTab !== 'timeline' && (
+              <div className="filter-bar glass">
+                <div className="filter-group">
+                  <label>状態:</label>
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="ステータスでフィルタ">
+                    <option value="all">すべて</option>
+                    <option value="pending">未着手</option>
+                    <option value="doing">進行中</option>
+                    <option value="done">完了</option>
+                    <option value="hold">保留</option>
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label>業者:</label>
+                  <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} aria-label="業者でフィルタ">
+                    <option value="all">すべての業者</option>
+                    {(allAssignees as string[]).map((name: string) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label>並び順:</label>
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} aria-label="並び順">
+                    <option value="manual">手動（カスタム）</option>
+                    <option value="date">日付順</option>
+                    <option value="assignee">業者順</option>
+                  </select>
+                </div>
+                { (statusFilter !== 'all' || assigneeFilter !== 'all') && (
+                  <button className="btn-clear" onClick={() => { setStatusFilter('all'); setAssigneeFilter('all'); }}>
+                    解除
+                  </button>
+                ) }
+              </div>
+            )}
           
           <div className={`workspace-pane chart-wrapper gantt-primary ${workspaceTab === 'chart' ? 'active' : ''}`}>
             <GanttChart
@@ -771,6 +788,7 @@ function ProjectDetailContent() {
                 })}
               </div>
             )}
+          </div>
           </div>
         </section>
 
@@ -1126,10 +1144,46 @@ function ProjectDetailContent() {
         .status-dot.in_progress { background: var(--primary); }
         .status-dot.planning { background: var(--border); }
 
-        .content-section {
+        .project-workspace {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 0;
+          min-width: 0;
+        }
+
+        .project-browser-tabs {
+          position: sticky;
+          top: 0;
+          z-index: 8;
+          display: flex;
+          align-items: stretch;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 8px 10px 0;
+          border: 1px solid var(--border-light);
+          border-bottom: none;
+          border-radius: var(--radius-md) var(--radius-md) 0 0;
+          background: color-mix(in srgb, var(--surface) 94%, transparent);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .project-tab-body {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          min-width: 0;
+          padding: 16px;
+          border: 1px solid var(--border-light);
+          border-radius: 0 0 var(--radius-md) var(--radius-md);
+          background: var(--surface);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .workspace-panel-heading {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 12px;
         }
 
         .section-title {
@@ -1191,30 +1245,35 @@ function ProjectDetailContent() {
         }
 
         .workspace-tabs {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 8px;
-          padding: 6px;
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-md);
-          background: var(--surface);
-          box-shadow: var(--shadow-sm);
+          display: flex;
+          align-items: flex-end;
+          gap: 4px;
+          min-width: 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .workspace-tabs::-webkit-scrollbar {
+          display: none;
         }
 
         .workspace-tab {
-          min-height: 48px;
-          border: none;
-          border-radius: 10px;
-          background: transparent;
+          min-height: 46px;
+          min-width: max-content;
+          border: 1px solid transparent;
+          border-bottom: none;
+          border-radius: 10px 10px 0 0;
+          background: var(--surface-hover);
           color: var(--text-sub);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          padding: 0 16px;
           font-size: 13px;
           font-weight: 900;
           cursor: pointer;
-          transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+          transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
 
         .workspace-tab svg {
@@ -1222,9 +1281,27 @@ function ProjectDetailContent() {
         }
 
         .workspace-tab.active {
-          background: var(--primary);
-          color: var(--text-on-primary);
-          box-shadow: var(--shadow-sm);
+          position: relative;
+          background: var(--surface);
+          color: var(--primary);
+          border-color: var(--border-light);
+          box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .workspace-tab.active::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: -1px;
+          height: 2px;
+          background: var(--surface);
+        }
+
+        .workspace-add-task {
+          flex: 0 0 auto;
+          align-self: center;
+          margin-bottom: 8px;
         }
 
         .workspace-pane {
@@ -1233,6 +1310,10 @@ function ProjectDetailContent() {
 
         .workspace-pane.active {
           display: block;
+        }
+
+        .workspace-pane:not(.active) {
+          display: none;
         }
 
         h2 {
@@ -1254,16 +1335,16 @@ function ProjectDetailContent() {
         }
 
         .chart-wrapper {
-          min-height: 360px;
+          min-height: 500px;
         }
 
         .chart-wrapper :global(.gantt-wrapper) {
-          min-height: 360px;
+          min-height: 500px;
           border-radius: var(--radius-md);
         }
 
         .chart-wrapper :global(.gantt-container) {
-          min-height: 360px;
+          min-height: 500px;
         }
 
         .chart-wrapper :global(.task-bar-container) {
@@ -2264,12 +2345,6 @@ function ProjectDetailContent() {
         }
 
         @media (min-width: 960px) and (max-width: 1280px) and (orientation: landscape) {
-          .content-section {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-          }
-
           .filter-bar {
             margin-bottom: 0;
           }
@@ -2292,6 +2367,10 @@ function ProjectDetailContent() {
             max-height: calc(100vh - 220px);
             display: flex;
             flex-direction: column;
+          }
+
+          .workspace-pane:not(.active) {
+            display: none;
           }
 
           .timeline-panel-header,
@@ -2362,6 +2441,56 @@ function ProjectDetailContent() {
         @media (max-width: 760px) {
           .project-detail {
             padding-bottom: calc(20px + var(--navbar-height) + env(safe-area-inset-bottom));
+          }
+
+          .project-browser-tabs {
+            position: sticky;
+            top: 0;
+            margin-left: -4px;
+            margin-right: -4px;
+            padding: 6px 6px 0;
+            gap: 8px;
+            align-items: flex-end;
+          }
+
+          .project-tab-body {
+            padding: 12px;
+          }
+
+          .workspace-tabs {
+            flex: 1 1 auto;
+          }
+
+          .workspace-tab {
+            min-height: 44px;
+            padding: 0 12px;
+            font-size: 12px;
+          }
+
+          .workspace-tab span {
+            white-space: nowrap;
+          }
+
+          .workspace-add-task {
+            width: 44px;
+            min-width: 44px;
+            height: 44px;
+            padding: 0;
+          }
+
+          .workspace-add-task span {
+            display: none;
+          }
+
+          .workspace-panel-heading {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .chart-wrapper,
+          .chart-wrapper :global(.gantt-wrapper),
+          .chart-wrapper :global(.gantt-container) {
+            min-height: calc(100vh - 250px);
           }
 
           .task-list-panel {
