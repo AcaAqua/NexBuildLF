@@ -1,21 +1,41 @@
 {
-  "name": "NexBuildLF",
-  "short_name": "NexBuild",
-  "description": "Professional Construction Field Management",
+  "id": "/",
+  "name": "工程管理 Pro",
+  "short_name": "工程管理",
+  "description": "現場向けの工程表・工程記録管理アプリ",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#fbfbfd",
   "theme_color": "#0071e3",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "現場一覧",
+      "short_name": "現場",
+      "url": "/",
+      "description": "現場一覧を開く"
+    },
+    {
+      "name": "予定ボード",
+      "short_name": "予定",
+      "url": "/schedule",
+      "description": "予定ボードを開く"
     }
   ]
 }
