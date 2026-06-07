@@ -26,6 +26,8 @@ const taskLogTypeLabels: Record<TaskLog['type'], string> = {
   handoff: '申し送り',
 };
 
+const quickLogTitles = ['写真記録', '進捗確認', '申し送り'];
+
 const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) return task.periods;
   const start = task.startDate || task.start_date;
@@ -228,8 +230,8 @@ function ProjectDetailContent() {
     const images = await Promise.all(files.map(async (file, index) => ({
       id: `att-${Date.now()}-${index}`,
       fileName: file.name,
-      fileType: file.type,
-      dataUrl: await readFileAsDataUrl(file),
+      fileType: 'image/jpeg',
+      dataUrl: await resizeImageFile(file),
       createdAt: now,
     })));
 
@@ -326,6 +328,8 @@ function ProjectDetailContent() {
   };
 
   if (!project) return null;
+
+  const canSaveTaskLog = Boolean(logBody.trim() || logAttachments.length > 0);
 
   return (
     <div className="project-detail">
@@ -674,6 +678,18 @@ function ProjectDetailContent() {
                     onChange={(e) => setLogTitle(e.target.value)}
                     placeholder="例: 雨天対応"
                   />
+                  <div className="quick-log-title-row" aria-label="記録タイトルの候補">
+                    {quickLogTitles.map((title) => (
+                      <button
+                        key={title}
+                        type="button"
+                        className={`quick-log-title ${logTitle === title ? 'active' : ''}`}
+                        onClick={() => setLogTitle(title)}
+                      >
+                        {title}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>メモ</label>
@@ -689,8 +705,8 @@ function ProjectDetailContent() {
                   <label>写真</label>
                   <label className="image-picker">
                     <Camera size={18} />
-                    <span>画像を選択</span>
-                    <input type="file" accept="image/*" multiple onChange={handleLogImageSelect} />
+                    <span>{logAttachments.length > 0 ? '写真を追加' : '写真を撮影・添付'}</span>
+                    <input type="file" accept="image/*" capture="environment" multiple onChange={handleLogImageSelect} />
                   </label>
                   {logAttachments.length > 0 && (
                     <div className="selected-attachments">
@@ -716,7 +732,7 @@ function ProjectDetailContent() {
                     </div>
                   )}
                 </div>
-                <button type="button" className="btn btn-primary" onClick={handleSaveTaskLog}>
+                <button type="button" className="btn btn-primary task-log-save" onClick={handleSaveTaskLog} disabled={!canSaveTaskLog}>
                   <Plus size={16} /> 記録追加
                 </button>
               </div>
@@ -1595,6 +1611,7 @@ function ProjectDetailContent() {
           display: flex;
           flex-direction: column;
           gap: 12px;
+          padding-bottom: 72px;
         }
 
         .task-log-form .form-group {
@@ -1621,8 +1638,47 @@ function ProjectDetailContent() {
           font-size: 15px;
         }
 
+        .quick-log-title-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .quick-log-title {
+          min-height: 36px;
+          padding: 0 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 999px;
+          background: var(--surface);
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .quick-log-title.active {
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+          color: var(--primary);
+        }
+
+        .task-log-save {
+          position: sticky;
+          bottom: -24px;
+          z-index: 15;
+          min-height: 56px !important;
+          margin: 4px -24px -24px;
+          border-radius: 0;
+          box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .task-log-save:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+        }
+
         .image-picker {
-          min-height: 48px;
+          min-height: 56px;
           padding: 0 14px;
           border: 1px dashed var(--primary);
           border-radius: var(--radius-md);
@@ -1632,7 +1688,7 @@ function ProjectDetailContent() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 900;
           cursor: pointer;
         }
@@ -1667,7 +1723,7 @@ function ProjectDetailContent() {
 
         .selected-attachment-remove {
           width: 100%;
-          min-height: 32px;
+          min-height: 38px;
           border: none;
           border-top: 1px solid var(--border-light);
           background: var(--surface);
@@ -1778,6 +1834,21 @@ function ProjectDetailContent() {
           .timeline-card::before {
             display: none;
           }
+
+          .task-log-form input,
+          .task-log-form textarea {
+            font-size: 16px;
+          }
+
+          .task-log-save {
+            margin-left: -24px;
+            margin-right: -24px;
+            padding-bottom: env(safe-area-inset-bottom);
+          }
+
+          .selected-attachments {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
         }
       `}</style>
     </div>
@@ -1802,11 +1873,39 @@ function formatLogCreatedAt(createdAt?: string) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
+function resizeImageFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxWidth = 1200;
+        const maxHeight = 1200;
+        let { width, height } = img;
+
+        if (width > height && width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        } else if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+
+        canvas.width = Math.round(width);
+        canvas.height = Math.round(height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('画像の変換に失敗しました'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+      img.src = String(event.target?.result || '');
+    };
+    reader.onerror = () => reject(reader.error || new Error('ファイルを読み込めませんでした'));
     reader.readAsDataURL(file);
   });
 }
