@@ -2161,6 +2161,118 @@ function ProjectDetailContent() {
           border-radius: var(--radius-md);
         }
 
+        @media (min-width: 960px) and (max-width: 1280px) and (orientation: landscape) {
+          .content-section {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
+            grid-template-areas:
+              "header header"
+              "filters filters"
+              "gantt timeline"
+              "list timeline";
+            align-items: start;
+            gap: 14px;
+          }
+
+          .section-header {
+            grid-area: header;
+          }
+
+          .filter-bar {
+            grid-area: filters;
+            margin-bottom: 0;
+          }
+
+          .chart-wrapper {
+            grid-area: gantt;
+            min-height: 420px;
+          }
+
+          .chart-wrapper :global(.gantt-wrapper),
+          .chart-wrapper :global(.gantt-container) {
+            min-height: 420px;
+          }
+
+          .task-list-panel {
+            grid-area: list;
+            max-height: 34vh;
+            overflow: auto;
+          }
+
+          .task-log-timeline-panel {
+            grid-area: timeline;
+            position: sticky;
+            top: calc(12px + env(safe-area-inset-top));
+            max-height: calc(100vh - 24px - env(safe-area-inset-top));
+            display: flex;
+            flex-direction: column;
+          }
+
+          .timeline-panel-header,
+          .timeline-task-filter-row {
+            flex: 0 0 auto;
+          }
+
+          .task-log-timeline-list,
+          .timeline-empty {
+            overflow: auto;
+            overscroll-behavior: contain;
+          }
+
+          .timeline-panel-header {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .timeline-panel-actions {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .timeline-filter {
+            flex: 1 1 auto;
+          }
+
+          .timeline-filter button {
+            flex: 1;
+          }
+
+          .timeline-photo-filter {
+            flex: 1 1 100%;
+          }
+
+          .timeline-task-filter-row {
+            max-height: 116px;
+            overflow: auto;
+            overscroll-behavior: contain;
+          }
+
+          .timeline-task-chip {
+            flex: 1 1 100%;
+            justify-content: space-between;
+          }
+
+          .timeline-task-chip span {
+            max-width: none;
+          }
+
+          .timeline-log-item {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            padding: 14px 12px;
+          }
+
+          .timeline-date {
+            align-items: flex-start;
+            flex-direction: row;
+            justify-content: space-between;
+          }
+
+          .timeline-card::before {
+            display: none;
+          }
+        }
+
         @media (max-width: 760px) {
           .timeline-panel-header,
           .timeline-panel-actions,
