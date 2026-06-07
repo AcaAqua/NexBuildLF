@@ -13,12 +13,6 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   reactStrictMode: false,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default withPWA(nextConfig);
