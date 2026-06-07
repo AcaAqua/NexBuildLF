@@ -44,6 +44,11 @@ const getTaskDateRange = (task: Task) => {
   };
 };
 
+const getTaskPhotoCount = (task: Task) => {
+  if (task.photos && task.photos.length > 0) return task.photos.length;
+  return task.photo ? 1 : 0;
+};
+
 function ProjectDetailContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
@@ -467,16 +472,17 @@ function ProjectDetailContent() {
               displayTasks.map((task: Task) => {
                 const range = getTaskDateRange(task);
                 const taskLogCount = getTaskLogs(task.id).length;
+                const taskPhotoCount = getTaskPhotoCount(task);
                 return (
                   <div key={task.id} className="task-list-row" onClick={() => handleEditTask(task)}>
                     <div className="task-name-cell">
                       <div className="color-dot" style={{ backgroundColor: task.color || '#e5e5ea' }} />
                       <div>
                         <h4>{task.title}</h4>
-                        {(task.memo || task.photo) && (
+                        {(task.memo || taskPhotoCount > 0) && (
                           <div className="task-extras-inline">
                             {task.memo && <span><FileText size={12} />メモ</span>}
-                            {task.photo && <span><Camera size={12} />写真</span>}
+                            {taskPhotoCount > 0 && <span><Camera size={12} />写真 {taskPhotoCount}</span>}
                           </div>
                         )}
                       </div>

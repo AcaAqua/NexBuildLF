@@ -22,6 +22,15 @@ export interface Task {
   color?: string;
   memo?: string;
   photo?: string;
+  photos?: TaskPhotoAttachment[];
+}
+
+export interface TaskPhotoAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  dataUrl: string;
+  createdAt: string;
 }
 
 export type TaskLogType = 'memo' | 'photo' | 'change' | 'handoff';
