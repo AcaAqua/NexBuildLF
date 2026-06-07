@@ -536,11 +536,11 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
 
         .form-actions {
           position: sticky;
-          bottom: -24px;
+          bottom: 0;
           z-index: 20;
           display: flex;
           gap: 12px;
-          margin: 4px -24px -24px;
+          margin: 4px -24px 0;
           padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
           background: var(--surface);
           border-top: 1px solid var(--border-light);

@@ -1978,12 +1978,13 @@ function ProjectDetailContent() {
 
         .task-log-save {
           position: sticky;
-          bottom: -24px;
+          bottom: 0;
           z-index: 15;
           min-height: 56px !important;
-          margin: 4px -24px -24px;
+          margin: 4px -24px 0;
           border-radius: 0;
           box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
+          padding-bottom: calc(8px + env(safe-area-inset-bottom));
         }
 
         .task-log-save:disabled {
@@ -2449,7 +2450,7 @@ function ProjectDetailContent() {
           .task-log-save {
             margin-left: -24px;
             margin-right: -24px;
-            padding-bottom: env(safe-area-inset-bottom);
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
           }
 
           .selected-attachments {
