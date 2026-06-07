@@ -307,6 +307,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
               <div className="empty-state">工程が登録されていません</div>
             ) : (
               tasks.map((task) => {
+                const taskPeriods = getTaskPeriods(task);
                 return (
                   <Reorder.Item key={task.id} value={task} className="gantt-row">
                     <div className="task-name-col clickable" onClick={() => onEdit && onEdit(task)}>
@@ -346,11 +347,13 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                         })}
                         
                         {/* Multiple Task Bars (Periods) */}
-                        {getTaskPeriods(task).map((period, pIdx) => {
+                        {taskPeriods.map((period, pIdx) => {
                           const sDate = startOfDay(parseISO(period.start));
                           const eDate = startOfDay(parseISO(period.end));
                           const taskLogCount = logCountByTask[task.id] || 0;
                           const StatusIcon = taskStatusMeta[task.status].icon;
+                          const periodName = period.label || task.title;
+                          const periodContext = taskPeriods.length > 1 ? `${task.title} / ${periodName}` : task.title;
                           if (isNaN(sDate.getTime())) return null;
 
                           const startOffset = differenceInDays(sDate, startDate);
@@ -373,8 +376,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                 onClick={(event) => handleTaskBarClick(event, task, period.start)}
                                 onDoubleClick={() => openTaskEditorFromBar(task)}
                                 className={`task-bar ${task.status} draggable`}
-                                title={`${task.title} - 1回タップで記録、2回タップで編集`}
-                                aria-label={`${task.title}。1回タップで記録、2回タップで編集`}
+                                title={`${periodContext} - 1回タップで記録、2回タップで編集`}
+                                aria-label={`${periodContext}。1回タップで記録、2回タップで編集`}
                                 style={{ 
                                   backgroundColor: task.color ? task.color : undefined,
                                   color: task.color ? '#1d2736' : undefined,
@@ -401,7 +404,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                   <StatusIcon size={13} />
                                   <span>{taskStatusMeta[task.status].label}</span>
                                 </span>
-                                <span className="bar-label">{period.label || task.title}</span>
+                                <span className="bar-label">{periodName}</span>
                                 {taskLogCount > 0 && (
                                   <span className="task-log-badge" aria-label={`記録 ${taskLogCount}件`}>
                                     <MessageSquareText size={12} />
@@ -790,7 +793,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
 
         @media (hover: none) and (pointer: coarse) {
           .task-bar {
-            min-height: 42px;
+            min-height: 44px;
             padding: 0 10px;
           }
 
@@ -870,6 +873,33 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           display: inline-flex;
           align-items: center;
           gap: 4px;
+        }
+
+        @media (max-width: 760px) {
+          .task-name-col.header {
+            min-height: 64px;
+          }
+
+          .icon-btn-small {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            background: var(--surface);
+          }
+
+          .gantt-header-actions {
+            gap: 6px;
+          }
+
+          .task-bar-container {
+            height: 44px !important;
+          }
+
+          .task-bar {
+            min-height: 44px !important;
+            padding: 0 12px;
+          }
         }
 
         @media (min-width: 761px) and (max-width: 1180px) {

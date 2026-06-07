@@ -1197,7 +1197,7 @@ function ProjectDetailContent() {
         }
 
         .task-log-action {
-          height: 34px;
+          min-height: 44px;
           padding: 0 10px;
           border: 1px solid var(--primary);
           border-radius: 9px;
@@ -1220,8 +1220,8 @@ function ProjectDetailContent() {
         }
 
         .icon-action {
-          width: 34px;
-          height: 34px;
+          width: 44px;
+          height: 44px;
           border: 1px solid var(--border-light);
           border-radius: 9px;
           background: var(--surface);
