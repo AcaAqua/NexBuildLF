@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/storage';
 import { addDays, parseISO, format } from 'date-fns';
-import { Camera, X, PlusCircle, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 
 interface TaskFormProps {
@@ -11,6 +11,13 @@ interface TaskFormProps {
   onSubmit: (data: Omit<Task, 'id'> & { id?: string }) => void;
   onCancel: () => void;
 }
+
+const statusOptions = [
+  { value: 'pending', label: '未着手', icon: CircleDashed },
+  { value: 'doing', label: '進行中', icon: PlayCircle },
+  { value: 'done', label: '完了', icon: CheckCircle2 },
+  { value: 'hold', label: '保留', icon: PauseCircle },
+] satisfies Array<{ value: Task['status']; label: string; icon: React.ElementType }>;
 
 export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormProps) {
   const [title, setTitle] = useState(initialData?.title || '');
@@ -265,17 +272,18 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         </div>
       </div>
 
-      <div className="form-group">
+      <div className="form-group status-field">
         <label>ステータス</label>
         <div className="status-toggle">
-          {(['pending', 'doing', 'done', 'hold'] as const).map((s) => (
+          {statusOptions.map(({ value, label, icon: StatusIcon }) => (
             <button
-              key={s}
+              key={value}
               type="button"
-              className={`status-btn ${status === s ? 'active' : ''} ${s}`}
-              onClick={() => setStatus(s)}
+              className={`status-btn ${status === value ? 'active' : ''} ${value}`}
+              onClick={() => setStatus(value)}
             >
-              {s === 'done' ? '完了' : s === 'doing' ? '進行中' : s === 'hold' ? '保留' : '未着手'}
+              <StatusIcon size={16} />
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -294,7 +302,8 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         .task-form {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 18px;
+          padding-bottom: 82px;
         }
 
         .form-group {
@@ -353,15 +362,20 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         }
 
         .status-btn {
-          padding: 8px;
+          min-height: 48px;
+          padding: 8px 6px;
           border: none;
           background: transparent;
-          font-size: 13px;
-          font-weight: 700;
+          font-size: 12px;
+          font-weight: 900;
           color: var(--text-sub);
           border-radius: var(--radius-sm);
           cursor: pointer;
           transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
         }
 
         .status-btn.active {
@@ -373,6 +387,10 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         .status-btn.done.active { color: var(--success); }
         .status-btn.doing.active { color: var(--primary); }
         .status-btn.hold.active { color: var(--warning); }
+
+        .status-field {
+          order: -1;
+        }
 
         .periods-section {
           display: flex;
@@ -462,15 +480,23 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         }
 
         .form-actions {
+          position: sticky;
+          bottom: -24px;
+          z-index: 20;
           display: flex;
           gap: 12px;
-          margin-top: 12px;
+          margin: 4px -24px -24px;
+          padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
+          background: var(--surface);
+          border-top: 1px solid var(--border-light);
+          box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
         }
 
         .form-actions .btn {
           flex: 1;
-          height: 52px;
+          min-height: 56px;
           font-size: 16px;
+          font-weight: 900;
         }
 
         .photo-panel {
@@ -573,6 +599,41 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         }
         .btn-remove-photo:hover {
           background: rgba(0,0,0,0.8);
+        }
+
+        @media (max-width: 560px) {
+          .task-form {
+            gap: 16px;
+          }
+
+          .period-row {
+            padding: 14px;
+            align-items: stretch;
+          }
+
+          .period-dates {
+            grid-template-columns: 1fr;
+            gap: 10px;
+          }
+
+          .status-toggle {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .status-btn {
+            min-height: 52px;
+            font-size: 13px;
+          }
+
+          input,
+          select,
+          .form-textarea {
+            font-size: 16px;
+          }
+
+          .photo-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
       `}</style>
     </form>
