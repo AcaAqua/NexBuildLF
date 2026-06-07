@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw, ListChecks, Fingerprint, ZoomIn, ClipboardCheck } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
@@ -31,6 +31,46 @@ interface FieldDeviceCheck {
   status: 'ok' | 'warn';
   icon: React.ElementType;
 }
+
+interface FieldOperationCheck {
+  label: string;
+  detail: string;
+  href: string;
+  icon: React.ElementType;
+}
+
+const FIELD_OPERATION_CHECKS: FieldOperationCheck[] = [
+  {
+    label: '工程を2回タップ',
+    detail: '工程表のバーを2回タップして編集画面が開く',
+    href: '/project',
+    icon: Fingerprint,
+  },
+  {
+    label: '工程表をピンチ',
+    detail: '指で広げる/つまむ操作で日付幅が変わる',
+    href: '/project',
+    icon: ZoomIn,
+  },
+  {
+    label: '写真を添付',
+    detail: '工程編集または工程記録で撮影/選択して保存する',
+    href: '/project',
+    icon: Camera,
+  },
+  {
+    label: '日報を入力',
+    detail: 'スマホ幅で入力欄と保存ボタンが見切れない',
+    href: '/meeting',
+    icon: ClipboardCheck,
+  },
+  {
+    label: 'バックアップ確認',
+    detail: '作成と復元プレビューの件数・上書き警告を見る',
+    href: '/settings',
+    icon: HardDrive,
+  },
+];
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsType>({ companyName: '', userName: '', qualifications: '' });
@@ -415,6 +455,28 @@ export default function SettingsPage() {
                 );
               })}
             </div>
+            <div className="operation-check-panel">
+              <div className="operation-check-heading">
+                <ListChecks size={18} />
+                <h3>実機で触って確認する操作</h3>
+              </div>
+              <div className="operation-check-list">
+                {FIELD_OPERATION_CHECKS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <a key={item.label} className="operation-check-item" href={item.href}>
+                      <span className="operation-check-icon">
+                        <Icon size={18} />
+                      </span>
+                      <span className="operation-check-text">
+                        <strong>{item.label}</strong>
+                        <span>{item.detail}</span>
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
           </section>
 
           {/* 危険な操作 */}
@@ -738,6 +800,87 @@ export default function SettingsPage() {
 
         .field-check-item.warn .field-check-status {
           color: var(--warning);
+        }
+
+        .operation-check-panel {
+          margin-top: 18px;
+          padding-top: 18px;
+          border-top: 1px solid var(--border-light);
+        }
+
+        .operation-check-heading {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 10px;
+          color: var(--text-main);
+        }
+
+        .operation-check-heading svg {
+          color: var(--primary);
+        }
+
+        .operation-check-heading h3 {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .operation-check-list {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .operation-check-item {
+          min-height: 62px;
+          display: grid;
+          grid-template-columns: 40px minmax(0, 1fr);
+          gap: 10px;
+          align-items: center;
+          padding: 10px 12px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+          color: inherit;
+          text-decoration: none;
+          transition: border-color 0.2s, background 0.2s;
+        }
+
+        .operation-check-item:hover {
+          border-color: var(--primary);
+          background: var(--surface-hover);
+        }
+
+        .operation-check-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .operation-check-text {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .operation-check-text strong {
+          color: var(--text-main);
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .operation-check-text span {
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.45;
         }
 
         .btn-danger {
