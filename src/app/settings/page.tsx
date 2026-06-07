@@ -39,6 +39,11 @@ interface FieldOperationCheck {
   icon: React.ElementType;
 }
 
+interface ReleaseGateItem {
+  label: string;
+  detail: string;
+}
+
 const FIELD_OPERATION_CHECKS: FieldOperationCheck[] = [
   {
     label: '工程を2回タップ',
@@ -69,6 +74,25 @@ const FIELD_OPERATION_CHECKS: FieldOperationCheck[] = [
     detail: '作成と復元プレビューの件数・上書き警告を見る',
     href: '/settings',
     icon: HardDrive,
+  },
+];
+
+const RELEASE_GATE_ITEMS: ReleaseGateItem[] = [
+  {
+    label: 'スマホ縦向き',
+    detail: '工程追加、2回タップ編集、ピンチ拡大縮小、写真保存を実機で確認',
+  },
+  {
+    label: 'タブレット横向き',
+    detail: '工程名、期間、状態、日付、記録タイムラインの見切れを確認',
+  },
+  {
+    label: 'オフライン/PWA',
+    detail: 'ホーム画面起動、通信遮断時の表示、端末内保存の維持を確認',
+  },
+  {
+    label: 'データ保全',
+    detail: 'バックアップ作成、復元プレビュー、上書き警告、写真枚数を確認',
   },
 ];
 
@@ -479,6 +503,27 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          <section className="settings-card glass release-gate-card">
+            <div className="release-gate-heading">
+              <AlertCircle size={20} />
+              <div>
+                <h2>配布前ゲート</h2>
+                <p className="description">配布作業の前に、現場端末で必ず確認する残項目です。</p>
+              </div>
+            </div>
+            <div className="release-gate-list" aria-label="配布前に残る実機確認項目">
+              {RELEASE_GATE_ITEMS.map((item) => (
+                <div key={item.label} className="release-gate-item">
+                  <span className="release-gate-status">未確認</span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* 危険な操作 */}
           <section className="settings-card danger glass">
             <h2>初期化</h2>
@@ -883,6 +928,68 @@ export default function SettingsPage() {
           line-height: 1.45;
         }
 
+        .release-gate-card {
+          border-color: var(--warning);
+          background: var(--warning-pastel);
+        }
+
+        .release-gate-heading {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .release-gate-heading svg {
+          color: var(--warning);
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+
+        .release-gate-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .release-gate-item {
+          display: grid;
+          grid-template-columns: 70px minmax(0, 1fr);
+          gap: 10px;
+          align-items: start;
+          padding: 12px;
+          border: 1px solid rgba(255, 149, 0, 0.42);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+        }
+
+        .release-gate-status {
+          min-height: 28px;
+          border-radius: 999px;
+          background: var(--warning-pastel);
+          color: var(--warning);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .release-gate-item strong {
+          display: block;
+          color: var(--text-main);
+          font-size: 14px;
+          font-weight: 900;
+          margin-bottom: 2px;
+        }
+
+        .release-gate-item p {
+          margin: 0;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.5;
+        }
+
         .btn-danger {
           display: flex;
           align-items: center;
@@ -955,6 +1062,10 @@ export default function SettingsPage() {
           }
 
           .field-check-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .release-gate-item {
             grid-template-columns: 1fr;
           }
 
