@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, ZoomIn, ZoomOut } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
 interface GanttChartProps {
@@ -54,9 +54,21 @@ const taskStatusMeta = {
   hold: { label: '停', icon: PauseCircle },
 } satisfies Record<Task['status'], { label: string; icon: React.ElementType }>;
 
+interface PendingDragChange {
+  task: Task;
+  taskTitle: string;
+  periodName: string;
+  daysMoved: number;
+  oldStart: string;
+  oldEnd: string;
+  newStart: string;
+  newEnd: string;
+}
+
 export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [cellWidth, setCellWidth] = React.useState(50);
+  const [pendingDragChange, setPendingDragChange] = React.useState<PendingDragChange | null>(null);
   const clickTimerRef = React.useRef<number | null>(null);
   const lastTapRef = React.useRef<{ taskId: string; time: number } | null>(null);
   const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
@@ -129,12 +141,29 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
       end: format(newEnd, 'yyyy-MM-dd')
     };
 
-    if (onUpdate) {
-      onUpdate({
+    setPendingDragChange({
+      task: {
         ...task,
         periods: updatedPeriods
-      });
-    }
+      },
+      taskTitle: task.title,
+      periodName: period.label || task.title,
+      daysMoved,
+      oldStart: period.start,
+      oldEnd: period.end,
+      newStart: format(newStart, 'yyyy-MM-dd'),
+      newEnd: format(newEnd, 'yyyy-MM-dd'),
+    });
+  };
+
+  const handleApplyPendingDragChange = () => {
+    if (!pendingDragChange) return;
+    onUpdate?.(pendingDragChange.task);
+    setPendingDragChange(null);
+  };
+
+  const handleCancelPendingDragChange = () => {
+    setPendingDragChange(null);
   };
 
   const clearPendingTaskLogOpen = () => {
@@ -235,6 +264,28 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           onTouchEnd={handleTimelineTouchEnd}
           onTouchCancel={() => { pinchRef.current = null; }}
         >
+          {pendingDragChange && (
+            <div className="drag-confirm-banner" role="status" aria-live="polite">
+              <div className="drag-confirm-text">
+                <strong>{pendingDragChange.taskTitle}</strong>
+                <span>
+                  {pendingDragChange.periodName}を{Math.abs(pendingDragChange.daysMoved)}日
+                  {pendingDragChange.daysMoved > 0 ? '後ろ' : '前'}へ移動します
+                </span>
+                <small>{pendingDragChange.oldStart} - {pendingDragChange.oldEnd} → {pendingDragChange.newStart} - {pendingDragChange.newEnd}</small>
+              </div>
+              <div className="drag-confirm-actions">
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleApplyPendingDragChange}>
+                  <CheckCircle2 size={16} />
+                  反映
+                </button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={handleCancelPendingDragChange}>
+                  <RotateCcw size={16} />
+                  戻す
+                </button>
+              </div>
+            </div>
+          )}
           {/* Timeline Header */}
           <div className="gantt-header">
             <div className="task-name-col header">
@@ -448,6 +499,56 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           overflow: hidden;
           width: 100%;
           touch-action: pan-x pan-y;
+        }
+
+        .drag-confirm-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px;
+          background: var(--warning-pastel);
+          border-bottom: 1px solid var(--warning);
+          color: var(--text-main);
+        }
+
+        .drag-confirm-text {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .drag-confirm-text strong {
+          font-size: 13px;
+          font-weight: 900;
+          color: var(--text-main);
+          overflow-wrap: anywhere;
+        }
+
+        .drag-confirm-text span {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--warning);
+        }
+
+        .drag-confirm-text small {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-sub);
+        }
+
+        .drag-confirm-actions {
+          display: flex;
+          gap: 8px;
+          flex: 0 0 auto;
+        }
+
+        .drag-confirm-actions .btn {
+          min-height: 44px;
+          padding: 8px 14px;
+          font-size: 13px;
+          font-weight: 900;
         }
 
         .gantt-header {
@@ -887,6 +988,16 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
         }
 
         @media (max-width: 760px) {
+          .drag-confirm-banner {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .drag-confirm-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+          }
+
           .task-name-col.header {
             min-height: 64px;
           }
