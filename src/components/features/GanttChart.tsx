@@ -60,6 +60,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const clickTimerRef = React.useRef<number | null>(null);
   const lastTapRef = React.useRef<{ taskId: string; time: number } | null>(null);
   const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
+  const timelineScrollAreasRef = React.useRef<Set<HTMLDivElement>>(new Set());
+  const syncingScrollRef = React.useRef(false);
 
   React.useEffect(() => {
     setCellWidth(getCellWidthForScale(storage.getSettings().uiScale || 'md'));
@@ -190,6 +192,23 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     if (event.touches.length < 2) pinchRef.current = null;
   };
 
+  const registerTimelineScrollArea = React.useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    timelineScrollAreasRef.current.add(node);
+  }, []);
+
+  const handleTimelineScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (syncingScrollRef.current) return;
+    const scrollLeft = event.currentTarget.scrollLeft;
+    syncingScrollRef.current = true;
+    timelineScrollAreasRef.current.forEach((area) => {
+      if (area !== event.currentTarget) area.scrollLeft = scrollLeft;
+    });
+    window.requestAnimationFrame(() => {
+      syncingScrollRef.current = false;
+    });
+  };
+
   return (
     <>
       <div className={`gantt-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}>
@@ -239,7 +258,11 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                 )}
               </div>
             </div>
-            <div className="timeline-scroll-area">
+            <div
+              ref={registerTimelineScrollArea}
+              className="timeline-scroll-area"
+              onScroll={handleTimelineScroll}
+            >
               <div className="timeline-days">
                 {days.map((day) => {
                   const dateStr = format(day, 'yyyy-MM-dd');
@@ -287,7 +310,11 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                         <span className="task-assignee">{task.assignee}</span>
                       </div>
                     </div>
-                    <div className="timeline-scroll-area">
+                    <div
+                      ref={registerTimelineScrollArea}
+                      className="timeline-scroll-area"
+                      onScroll={handleTimelineScroll}
+                    >
                       <div
                         className="timeline-grid"
                         style={{
@@ -816,6 +843,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
         }
 
         .icon-btn-small {
+          width: 28px;
+          height: 28px;
           background: none; border: none; color: var(--text-sub); cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           padding: 4px; border-radius: 4px; transition: all 0.2s;
@@ -839,6 +868,51 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           display: inline-flex;
           align-items: center;
           gap: 4px;
+        }
+
+        @media (min-width: 761px) and (max-width: 1180px) {
+          .gantt-wrapper {
+            border-radius: var(--radius-md);
+          }
+
+          .task-name-col {
+            width: 210px;
+            min-width: 210px;
+            padding: 12px 14px;
+          }
+
+          .task-name-col.header {
+            height: 64px;
+          }
+
+          .day-cell {
+            height: 64px;
+          }
+
+          .icon-btn-small {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            background: var(--surface);
+          }
+
+          .gantt-header-actions {
+            gap: 6px;
+          }
+
+          .task-bar-container {
+            height: 44px !important;
+          }
+
+          .task-bar {
+            min-height: 44px !important;
+            padding: 0 12px;
+          }
+
+          .timeline-scroll-area {
+            scrollbar-width: thin;
+          }
         }
       `}</style>
     </>
