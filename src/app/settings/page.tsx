@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor } from "lucide-react";
+import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
@@ -25,19 +25,80 @@ interface ImportSummary {
   fileName: string;
 }
 
+interface FieldDeviceCheck {
+  label: string;
+  detail: string;
+  status: 'ok' | 'warn';
+  icon: React.ElementType;
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsType>({ companyName: '', userName: '', qualifications: '' });
   const [saveMessage, setSaveMessage] = useState('');
   const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [importMessage, setImportMessage] = useState('');
+  const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setSettings(storage.getSettings());
     setMounted(true);
+    refreshFieldChecks();
   }, []);
+
+  const refreshFieldChecks = async () => {
+    if (typeof window === 'undefined') return;
+
+    const viewportWidth = window.innerWidth;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const touchPoints = navigator.maxTouchPoints || 0;
+    const cameraInput = document.createElement('input');
+    cameraInput.type = 'file';
+    const hasCameraFileInput = 'capture' in cameraInput && 'accept' in cameraInput;
+    const storageEstimate = await navigator.storage?.estimate?.();
+    const quota = storageEstimate?.quota || 0;
+    const usage = storageEstimate?.usage || 0;
+    const freeBytes = Math.max(quota - usage, 0);
+    const freeRatio = quota > 0 ? freeBytes / quota : 1;
+
+    setFieldChecks([
+      {
+        label: '画面幅',
+        detail: viewportWidth >= 768
+          ? `タブレット幅 ${viewportWidth}px`
+          : `スマホ幅 ${viewportWidth}px`,
+        status: viewportWidth >= 360 ? 'ok' : 'warn',
+        icon: viewportWidth >= 768 ? Tablet : Smartphone,
+      },
+      {
+        label: 'タッチ操作',
+        detail: touchPoints > 0 ? `${touchPoints}点タッチを検出` : 'タッチ点数を検出できません',
+        status: touchPoints > 0 ? 'ok' : 'warn',
+        icon: Smartphone,
+      },
+      {
+        label: 'PWA起動',
+        detail: isStandalone ? 'ホーム画面起動中' : 'ブラウザ表示中',
+        status: isStandalone ? 'ok' : 'warn',
+        icon: Wifi,
+      },
+      {
+        label: '写真入力',
+        detail: hasCameraFileInput ? 'カメラ/写真選択に対応' : '端末側で要確認',
+        status: hasCameraFileInput ? 'ok' : 'warn',
+        icon: Camera,
+      },
+      {
+        label: '端末保存',
+        detail: quota > 0 ? `空き目安 ${formatDataSize(freeBytes)}` : '容量推定は未対応',
+        status: quota === 0 || freeRatio > 0.15 ? 'ok' : 'warn',
+        icon: HardDrive,
+      },
+    ]);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,6 +386,37 @@ export default function SettingsPage() {
             )}
           </section>
 
+          <section className="settings-card glass field-check-card">
+            <div className="field-check-header">
+              <div>
+                <h2>現場端末セルフチェック</h2>
+                <p className="description">スマホ・タブレットで開いた端末状態を確認します。</p>
+              </div>
+              <button type="button" className="btn btn-outline btn-refresh" onClick={refreshFieldChecks}>
+                <RotateCcw size={16} />
+                再確認
+              </button>
+            </div>
+            <div className="field-check-grid" aria-label="現場端末セルフチェック結果">
+              {fieldChecks.map((item) => {
+                const Icon = item.icon;
+                const StatusIcon = item.status === 'ok' ? CheckCircle2 : AlertCircle;
+                return (
+                  <div key={item.label} className={`field-check-item ${item.status}`}>
+                    <div className="field-check-icon">
+                      <Icon size={20} />
+                    </div>
+                    <div className="field-check-text">
+                      <span>{item.label}</span>
+                      <strong>{item.detail}</strong>
+                    </div>
+                    <StatusIcon className="field-check-status" size={18} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {/* 危険な操作 */}
           <section className="settings-card danger glass">
             <h2>初期化</h2>
@@ -561,6 +653,93 @@ export default function SettingsPage() {
           background: #fff1f0;
         }
 
+        .field-check-card {
+          border-color: var(--primary-pastel);
+        }
+
+        .field-check-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .btn-refresh {
+          min-width: 112px;
+          min-height: 44px;
+          padding: 8px 14px;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .field-check-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .field-check-item {
+          min-height: 76px;
+          display: grid;
+          grid-template-columns: 44px minmax(0, 1fr) 24px;
+          align-items: center;
+          gap: 10px;
+          padding: 12px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+        }
+
+        .field-check-item.ok {
+          border-color: var(--success);
+          background: var(--success-pastel);
+        }
+
+        .field-check-item.warn {
+          border-color: var(--warning);
+          background: var(--warning-pastel);
+        }
+
+        .field-check-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--primary);
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+        }
+
+        .field-check-text {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .field-check-text span {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .field-check-text strong {
+          color: var(--text-main);
+          font-size: 13px;
+          font-weight: 900;
+          overflow-wrap: anywhere;
+        }
+
+        .field-check-status {
+          color: var(--success);
+        }
+
+        .field-check-item.warn .field-check-status {
+          color: var(--warning);
+        }
+
         .btn-danger {
           display: flex;
           align-items: center;
@@ -622,6 +801,18 @@ export default function SettingsPage() {
 
           .settings-card {
             padding: 18px;
+          }
+
+          .field-check-header {
+            flex-direction: column;
+          }
+
+          .btn-refresh {
+            width: 100%;
+          }
+
+          .field-check-grid {
+            grid-template-columns: 1fr;
           }
 
           .import-preview dl {
