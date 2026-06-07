@@ -305,6 +305,10 @@ function ProjectDetailContent() {
 
   const handleSaveTaskLog = () => {
     if (!project || !logPanelTask || (!logBody.trim() && logAttachments.length === 0)) return;
+    if (isLogImageProcessing) {
+      setStorageMessage('写真の処理が終わるまで記録を保存できません。');
+      return;
+    }
     setStorageMessage('');
 
     const now = new Date().toISOString();
@@ -404,7 +408,7 @@ function ProjectDetailContent() {
 
   if (!project) return null;
 
-  const canSaveTaskLog = Boolean(logBody.trim() || logAttachments.length > 0);
+  const canSaveTaskLog = Boolean(logBody.trim() || logAttachments.length > 0) && !isLogImageProcessing;
 
   return (
     <div className="project-detail">
@@ -852,6 +856,11 @@ function ProjectDetailContent() {
                       />
                     </label>
                   </div>
+                  {isLogImageProcessing && (
+                    <p className="log-processing-note" role="status">
+                      写真を端末保存向けに処理しています。完了後に記録追加できます。
+                    </p>
+                  )}
                   {logAttachments.length > 0 && (
                     <div className="selected-attachments">
                       {logAttachments.map((attachment) => (
@@ -880,7 +889,7 @@ function ProjectDetailContent() {
                   )}
                 </div>
                 <button type="button" className="btn btn-primary task-log-save" onClick={handleSaveTaskLog} disabled={!canSaveTaskLog}>
-                  <Plus size={16} /> 記録追加
+                  <Plus size={16} /> {isLogImageProcessing ? '写真処理中' : '記録追加'}
                 </button>
               </div>
 
@@ -2027,6 +2036,17 @@ function ProjectDetailContent() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .log-processing-note {
+          margin: 0;
+          padding: 10px 12px;
+          border: 1px solid var(--warning);
+          border-radius: var(--radius-sm);
+          background: var(--warning-pastel);
+          color: var(--warning);
           font-size: 12px;
           font-weight: 900;
         }
