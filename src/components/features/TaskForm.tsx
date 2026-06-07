@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Task, Period, storage, Partner } from '@/lib/storage';
+import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/storage';
 import { addDays, parseISO, format } from 'date-fns';
-import { Camera, X, PlusCircle, Trash2 } from 'lucide-react';
+import { Camera, X, PlusCircle, Trash2, Image as ImageIcon } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 
 interface TaskFormProps {
@@ -18,7 +18,17 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   const [status, setStatus] = useState<Task['status']>(initialData?.status || 'pending');
   const [color, setColor] = useState(initialData?.color || '#e5e5ea');
   const [memo, setMemo] = useState(initialData?.memo || '');
-  const [photo, setPhoto] = useState(initialData?.photo || '');
+  const [photos, setPhotos] = useState<TaskPhotoAttachment[]>(() => {
+    if (initialData?.photos && initialData.photos.length > 0) return initialData.photos;
+    if (!initialData?.photo) return [];
+    return [{
+      id: `${initialData.id || 'legacy'}-photo`,
+      fileName: '添付写真',
+      fileType: 'image/jpeg',
+      dataUrl: initialData.photo,
+      createdAt: new Date().toISOString(),
+    }];
+  });
   
   const [partners, setPartners] = useState<Partner[]>([]);
 
@@ -60,46 +70,31 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     setPeriods(newPeriods);
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(file => file.type.startsWith('image/'));
+    if (files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
+    const now = new Date().toISOString();
+    const resizedPhotos = await Promise.all(files.map(async (file, index) => ({
+      id: `task-photo-${Date.now()}-${index}`,
+      fileName: file.name || `現場写真-${index + 1}.jpg`,
+      fileType: 'image/jpeg',
+      dataUrl: await resizeImageFile(file),
+      createdAt: now,
+    })));
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // 60%品質の軽量JPEG
-        setPhoto(dataUrl);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    setPhotos(prev => [...prev, ...resizedPhotos]);
+    e.target.value = '';
+  };
+
+  const handleRemovePhoto = (photoId: string) => {
+    setPhotos(prev => prev.filter(photo => photo.id !== photoId));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
+    const primaryPhoto = photos[0]?.dataUrl || '';
     onSubmit({ 
       title, 
       periods, 
@@ -107,7 +102,8 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       status, 
       color, 
       memo,
-      photo,
+      photo: primaryPhoto,
+      photos: photos.length > 0 ? photos : undefined,
       id: initialData?.id 
     });
   };
@@ -215,28 +211,41 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
 
       <div className="form-group">
         <label>現場写真・図面</label>
-        <div className="photo-upload-area">
-          {photo ? (
-            <div className="photo-preview">
-              <img src={photo} alt="添付写真" />
-              <button type="button" className="btn-remove-photo" onClick={() => setPhoto('')}>
-                <X size={16} />
-              </button>
+        <div className="photo-panel">
+          {photos.length > 0 ? (
+            <div className="photo-grid" aria-label="添付済み写真">
+              {photos.map((item, index) => (
+                <div className="photo-preview" key={item.id}>
+                  <img src={item.dataUrl} alt={`添付写真 ${index + 1}`} />
+                  <div className="photo-meta">
+                    <ImageIcon size={14} />
+                    <span>{index === 0 ? '代表写真' : `写真 ${index + 1}`}</span>
+                  </div>
+                  <button type="button" className="btn-remove-photo" onClick={() => handleRemovePhoto(item.id)} aria-label={`添付写真 ${index + 1} を削除`}>
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           ) : (
-            <label className="photo-upload-btn">
-              <Camera size={24} />
-              <span>写真を撮影・添付</span>
-              <input 
-                type="file" 
-                accept="image/*" 
-                capture="environment"
-                onChange={handlePhotoChange}
-                style={{ display: 'none' }}
-                aria-label="現場写真をアップロード"
-              />
-            </label>
+            <div className="photo-empty">
+              <Camera size={28} />
+              <span>未添付</span>
+            </div>
           )}
+          <label className="photo-upload-btn">
+            <Camera size={22} />
+            <span>{photos.length > 0 ? '写真を追加' : '写真を撮影・添付'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              onChange={handlePhotoChange}
+              style={{ display: 'none' }}
+              aria-label="現場写真をアップロード"
+            />
+          </label>
         </div>
       </div>
 
@@ -464,25 +473,30 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           font-size: 16px;
         }
 
-        .photo-upload-area {
+        .photo-panel {
+          width: 100%;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          flex-direction: column;
+          gap: 12px;
         }
 
         .photo-upload-btn {
           width: 100%;
-          padding: 24px;
+          min-height: 56px;
+          padding: 0 16px;
           border: 2px dashed var(--border);
-          border-radius: var(--radius-lg);
+          border-radius: var(--radius-md);
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           align-items: center;
+          justify-content: center;
           gap: 12px;
           color: var(--text-sub);
           cursor: pointer;
           transition: all 0.2s;
           background: var(--surface);
+          font-size: 15px;
+          font-weight: 900;
         }
 
         .photo-upload-btn:hover {
@@ -494,18 +508,51 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
         .photo-preview {
           position: relative;
           width: 100%;
-          border-radius: var(--radius-lg);
+          border-radius: var(--radius-md);
           overflow: hidden;
           border: 1px solid var(--border-light);
+          background: var(--surface-hover);
         }
 
         .photo-preview img {
           width: 100%;
-          height: auto;
+          aspect-ratio: 4 / 3;
           display: block;
-          max-height: 300px;
-          object-fit: contain;
+          object-fit: cover;
           background: #000;
+        }
+
+        .photo-grid {
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+          gap: 10px;
+        }
+
+        .photo-meta {
+          min-height: 32px;
+          padding: 0 10px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-main);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .photo-empty {
+          min-height: 96px;
+          border: 1px dashed var(--border);
+          border-radius: var(--radius-md);
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 900;
         }
 
         .btn-remove-photo {
@@ -530,4 +577,41 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       `}</style>
     </form>
   );
+}
+
+function resizeImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxWidth = 1200;
+        const maxHeight = 1200;
+        let { width, height } = img;
+
+        if (width > height && width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        } else if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+
+        canvas.width = Math.round(width);
+        canvas.height = Math.round(height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('画像の変換に失敗しました'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+      img.src = String(event.target?.result || '');
+    };
+    reader.onerror = () => reject(reader.error || new Error('ファイルを読み込めませんでした'));
+    reader.readAsDataURL(file);
+  });
 }
