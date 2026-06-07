@@ -11,6 +11,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "android/**",
+    "node_modules/**",
+    "public/sw.js",
+    "public/workbox-*.js",
+    "tsconfig.tsbuildinfo",
   ]),
 ]);
 

@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+const projectRoot = path.resolve(process.cwd());
 
 const withPWA = require('next-pwa')({
   dest: 'public',
@@ -9,6 +12,7 @@ const withPWA = require('next-pwa')({
 
 const nextConfig: NextConfig = {
   output: "export",
+  outputFileTracingRoot: projectRoot,
   images: {
     unoptimized: true,
   },
