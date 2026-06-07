@@ -10,7 +10,7 @@ import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
-import { FIELD_PHOTO_LIMIT_MESSAGE, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
+import { estimateDataUrlBytes, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
 import { Suspense } from 'react';
 
 const taskStatusLabels: Record<Task['status'], string> = {
@@ -189,6 +189,7 @@ function ProjectDetailContent() {
   }, [project]);
 
   const selectedTimelineTask = timelineTaskId ? taskById.get(timelineTaskId) : undefined;
+  const logAttachmentBytes = logAttachments.reduce((total, item) => total + estimateDataUrlBytes(item.dataUrl), 0);
 
   const handleOpenAddModal = () => {
     setEditingTask(undefined);
@@ -804,6 +805,10 @@ function ProjectDetailContent() {
                 </div>
                 <div className="form-group">
                   <label>写真</label>
+                  <div className="photo-save-summary" aria-live="polite">
+                    <span>{logAttachments.length}/{MAX_FIELD_PHOTOS}枚</span>
+                    <span>{formatDataSize(logAttachmentBytes)}</span>
+                  </div>
                   <label className="image-picker">
                     <Camera size={18} />
                     <span>{logAttachments.length > 0 ? '写真を追加' : '写真を撮影・添付'}</span>
@@ -1930,6 +1935,21 @@ function ProjectDetailContent() {
           font-size: 15px;
           font-weight: 900;
           cursor: pointer;
+        }
+
+        .photo-save-summary {
+          min-height: 34px;
+          padding: 0 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 999px;
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .image-picker input {

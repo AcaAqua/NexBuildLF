@@ -5,7 +5,7 @@ import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/stora
 import { addDays, parseISO, format } from 'date-fns';
 import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
-import { FIELD_PHOTO_LIMIT_MESSAGE, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
+import { estimateDataUrlBytes, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
 
 interface TaskFormProps {
   initialData?: Partial<Task>;
@@ -38,6 +38,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     }];
   });
   const [photoMessage, setPhotoMessage] = useState('');
+  const photoBytes = photos.reduce((total, item) => total + estimateDataUrlBytes(item.dataUrl), 0);
   
   const [partners, setPartners] = useState<Partner[]>([]);
 
@@ -237,6 +238,10 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       <div className="form-group">
         <label>現場写真・図面</label>
         <div className="photo-panel">
+          <div className="photo-summary" aria-live="polite">
+            <span>{photos.length}/{MAX_FIELD_PHOTOS}枚</span>
+            <span>{formatDataSize(photoBytes)}</span>
+          </div>
           {photos.length > 0 ? (
             <div className="photo-grid" aria-label="添付済み写真">
               {photos.map((item, index) => (
@@ -523,6 +528,21 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           display: flex;
           flex-direction: column;
           gap: 12px;
+        }
+
+        .photo-summary {
+          min-height: 34px;
+          padding: 0 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 999px;
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .photo-upload-btn {
