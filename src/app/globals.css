@@ -146,6 +146,16 @@ body {
   flex-direction: column;
   overflow-x: hidden;
   line-height: 1.5;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* Glassmorphism Utility */

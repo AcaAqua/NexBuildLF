@@ -144,7 +144,6 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
           onChange={(e) => setTitle(e.target.value)} 
           placeholder="例: 基礎工事"
           required
-          autoFocus
         />
       </div>
 
