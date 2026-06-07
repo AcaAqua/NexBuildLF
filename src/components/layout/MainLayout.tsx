@@ -273,6 +273,8 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
 
         .bottom-nav-item {
           flex: 1;
+          min-width: 0;
+          height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -296,6 +298,10 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
         .label {
           font-size: 11px;
           font-weight: 600;
+          max-width: 100%;
+          text-align: center;
+          line-height: 1.1;
+          overflow-wrap: anywhere;
         }
 
         .icon-btn {
