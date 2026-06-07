@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, Plus, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
 interface GanttChartProps {
@@ -13,6 +13,7 @@ interface GanttChartProps {
   taskLogs?: TaskLog[];
   onUpdate?: (task: Task) => void;
   onEdit?: (task: Task) => void;
+  onAddTask?: () => void;
   onReorder?: (newTasks: Task[]) => void;
   onDateClick?: (date: string) => void;
   onOpenTaskLog?: (task: Task, date: string) => void;
@@ -65,7 +66,7 @@ interface PendingDragChange {
   newEnd: string;
 }
 
-export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
+export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onAddTask, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [cellWidth, setCellWidth] = React.useState(50);
   const [pendingDragChange, setPendingDragChange] = React.useState<PendingDragChange | null>(null);
@@ -251,9 +252,16 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
         {isFullscreen && (
           <div className="fullscreen-header glass">
             <h2>打ち合わせモード（全画面）</h2>
-            <button className="btn btn-outline btn-sm" onClick={() => setIsFullscreen(false)}>
-              <Minimize size={16} /> 閉じる
-            </button>
+            <div className="fullscreen-actions">
+              {onAddTask && (
+                <button className="btn btn-primary btn-sm" onClick={onAddTask}>
+                  <Plus size={16} /> 工程追加
+                </button>
+              )}
+              <button className="btn btn-outline btn-sm" onClick={() => setIsFullscreen(false)}>
+                <Minimize size={16} /> 閉じる
+              </button>
+            </div>
           </div>
         )}
         <div
@@ -950,6 +958,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 12px;
           padding: 12px 24px;
           background: var(--surface);
           border-bottom: 1px solid var(--border-light);
@@ -957,6 +966,14 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
 
         .fullscreen-header h2 {
           font-size: 16px; font-weight: 800; margin: 0; color: var(--primary);
+        }
+
+        .fullscreen-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
 
         .icon-btn-small {

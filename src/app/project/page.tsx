@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
-import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History } from "lucide-react";
 import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
@@ -28,6 +28,7 @@ const taskLogTypeLabels: Record<TaskLog['type'], string> = {
 };
 
 const quickLogTitles = ['写真記録', '進捗確認', '申し送り'];
+type WorkspaceTab = 'chart' | 'tasks' | 'timeline';
 
 const getTaskPeriods = (task: Task): Period[] => {
   if (task.periods && task.periods.length > 0) return task.periods;
@@ -93,6 +94,7 @@ function ProjectDetailContent() {
   const [timelineTaskId, setTimelineTaskId] = useState<string>('');
   const [timelinePhotoOnly, setTimelinePhotoOnly] = useState(false);
   const [storageMessage, setStorageMessage] = useState('');
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('chart');
 
   const loadData = () => {
     const data = storage.getProjects();
@@ -497,6 +499,39 @@ function ProjectDetailContent() {
             </button>
           </div>
 
+          <div className="workspace-tabs" role="tablist" aria-label="工程表表示切替">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceTab === 'chart'}
+              className={`workspace-tab ${workspaceTab === 'chart' ? 'active' : ''}`}
+              onClick={() => setWorkspaceTab('chart')}
+            >
+              <GanttChartSquare size={18} />
+              <span>工程表</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceTab === 'tasks'}
+              className={`workspace-tab ${workspaceTab === 'tasks' ? 'active' : ''}`}
+              onClick={() => setWorkspaceTab('tasks')}
+            >
+              <ListTodo size={18} />
+              <span>工程一覧</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceTab === 'timeline'}
+              className={`workspace-tab ${workspaceTab === 'timeline' ? 'active' : ''}`}
+              onClick={() => setWorkspaceTab('timeline')}
+            >
+              <History size={18} />
+              <span>記録</span>
+            </button>
+          </div>
+
           <div className="filter-bar glass">
             <div className="filter-group">
               <label>状態:</label>
@@ -532,20 +567,21 @@ function ProjectDetailContent() {
             ) }
           </div>
           
-          <div className="chart-wrapper gantt-primary">
+          <div className={`workspace-pane chart-wrapper gantt-primary ${workspaceTab === 'chart' ? 'active' : ''}`}>
             <GanttChart
               tasks={displayTasks}
               dailyMemos={project.dailyMemos}
               taskLogs={project.taskLogs}
               onUpdate={handleSaveTask}
               onEdit={handleEditTask}
+              onAddTask={handleOpenAddModal}
               onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
               onDateClick={handleDateClick}
               onOpenTaskLog={handleOpenTaskLog}
             />
           </div>
 
-          <div className="task-list-panel">
+          <div className={`workspace-pane task-list-panel ${workspaceTab === 'tasks' ? 'active' : ''}`}>
             <div className="task-list-header">
               <span>工程名</span>
               <span>担当者</span>
@@ -622,7 +658,7 @@ function ProjectDetailContent() {
             )}
           </div>
 
-          <div className="task-log-timeline-panel">
+          <div className={`workspace-pane task-log-timeline-panel ${workspaceTab === 'timeline' ? 'active' : ''}`}>
             <div className="timeline-panel-header">
               <div>
                 <h3>工程記録タイムライン</h3>
@@ -1152,6 +1188,51 @@ function ProjectDetailContent() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+        }
+
+        .workspace-tabs {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          padding: 6px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .workspace-tab {
+          min-height: 48px;
+          border: none;
+          border-radius: 10px;
+          background: transparent;
+          color: var(--text-sub);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        }
+
+        .workspace-tab svg {
+          flex-shrink: 0;
+        }
+
+        .workspace-tab.active {
+          background: var(--primary);
+          color: var(--text-on-primary);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .workspace-pane {
+          display: none;
+        }
+
+        .workspace-pane.active {
+          display: block;
         }
 
         h2 {
@@ -2184,47 +2265,31 @@ function ProjectDetailContent() {
 
         @media (min-width: 960px) and (max-width: 1280px) and (orientation: landscape) {
           .content-section {
-            display: grid;
-            grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
-            grid-template-areas:
-              "header header"
-              "filters filters"
-              "gantt timeline"
-              "list timeline";
-            align-items: start;
+            display: flex;
+            flex-direction: column;
             gap: 14px;
           }
 
-          .section-header {
-            grid-area: header;
-          }
-
           .filter-bar {
-            grid-area: filters;
             margin-bottom: 0;
           }
 
           .chart-wrapper {
-            grid-area: gantt;
-            min-height: 420px;
+            min-height: 520px;
           }
 
           .chart-wrapper :global(.gantt-wrapper),
           .chart-wrapper :global(.gantt-container) {
-            min-height: 420px;
+            min-height: 520px;
           }
 
           .task-list-panel {
-            grid-area: list;
-            max-height: 34vh;
+            max-height: calc(100vh - 260px);
             overflow: auto;
           }
 
           .task-log-timeline-panel {
-            grid-area: timeline;
-            position: sticky;
-            top: calc(12px + env(safe-area-inset-top));
-            max-height: calc(100vh - 24px - env(safe-area-inset-top));
+            max-height: calc(100vh - 220px);
             display: flex;
             flex-direction: column;
           }

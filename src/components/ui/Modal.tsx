@@ -71,7 +71,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           bottom: 0;
           background: rgba(0, 0, 0, 0.4);
           backdrop-filter: blur(4px);
-          z-index: 1000;
+          z-index: 20000;
           display: flex;
           align-items: flex-end;
           justify-content: center;
