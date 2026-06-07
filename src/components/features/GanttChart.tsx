@@ -156,7 +156,12 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     onEdit?.(task);
   };
 
-  const handleTaskBarTouchEnd = (event: React.TouchEvent, task: Task) => {
+  const handleTaskBarClick = (event: React.MouseEvent, task: Task, date: string) => {
+    if (event.detail > 1) {
+      openTaskEditorFromBar(task);
+      return;
+    }
+
     const now = Date.now();
     const lastTap = lastTapRef.current;
     if (lastTap?.taskId === task.id && now - lastTap.time <= 320) {
@@ -166,6 +171,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
       return;
     }
     lastTapRef.current = { taskId: task.id, time: now };
+    openTaskLogAfterSingleTap(task, date);
   };
 
   const updateZoom = (nextCellWidth: number) => {
@@ -364,12 +370,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                 dragMomentum={false}
                                 dragElastic={0.05}
                                 onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
-                                onClick={(event) => {
-                                  if (event.detail > 1) return;
-                                  openTaskLogAfterSingleTap(task, period.start);
-                                }}
+                                onClick={(event) => handleTaskBarClick(event, task, period.start)}
                                 onDoubleClick={() => openTaskEditorFromBar(task)}
-                                onTouchEnd={(event) => handleTaskBarTouchEnd(event, task)}
                                 className={`task-bar ${task.status} draggable`}
                                 title={`${task.title} - 1回タップで記録、2回タップで編集`}
                                 aria-label={`${task.title}。1回タップで記録、2回タップで編集`}
