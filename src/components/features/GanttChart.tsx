@@ -32,9 +32,17 @@ const getTaskPeriods = (task: Task): Period[] => {
 export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [uiScale, setUiScale] = React.useState<'sm' | 'md' | 'lg'>('md');
+  const clickTimerRef = React.useRef<number | null>(null);
+  const lastTapRef = React.useRef<{ taskId: string; time: number } | null>(null);
 
   React.useEffect(() => {
     setUiScale(storage.getSettings().uiScale || 'md');
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    };
   }, []);
 
   const cellWidth = uiScale === 'sm' ? 36 : uiScale === 'lg' ? 64 : 50;
@@ -97,6 +105,37 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
         periods: updatedPeriods
       });
     }
+  };
+
+  const clearPendingTaskLogOpen = () => {
+    if (!clickTimerRef.current) return;
+    window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = null;
+  };
+
+  const openTaskLogAfterSingleTap = (task: Task, date: string) => {
+    clearPendingTaskLogOpen();
+    clickTimerRef.current = window.setTimeout(() => {
+      onOpenTaskLog?.(task, date);
+      clickTimerRef.current = null;
+    }, 260);
+  };
+
+  const openTaskEditorFromBar = (task: Task) => {
+    clearPendingTaskLogOpen();
+    onEdit?.(task);
+  };
+
+  const handleTaskBarTouchEnd = (event: React.TouchEvent, task: Task) => {
+    const now = Date.now();
+    const lastTap = lastTapRef.current;
+    if (lastTap?.taskId === task.id && now - lastTap.time <= 320) {
+      event.preventDefault();
+      lastTapRef.current = null;
+      openTaskEditorFromBar(task);
+      return;
+    }
+    lastTapRef.current = { taskId: task.id, time: now };
   };
 
   return (
@@ -217,8 +256,15 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                 dragMomentum={false}
                                 dragElastic={0.05}
                                 onDragEnd={(_, info) => handleDragEnd(task, pIdx, info.offset.x)}
-                                onClick={() => onOpenTaskLog && onOpenTaskLog(task, period.start)}
+                                onClick={(event) => {
+                                  if (event.detail > 1) return;
+                                  openTaskLogAfterSingleTap(task, period.start);
+                                }}
+                                onDoubleClick={() => openTaskEditorFromBar(task)}
+                                onTouchEnd={(event) => handleTaskBarTouchEnd(event, task)}
                                 className={`task-bar ${task.status} draggable`}
+                                title={`${task.title} - 1回タップで記録、2回タップで編集`}
+                                aria-label={`${task.title}。1回タップで記録、2回タップで編集`}
                                 style={{ 
                                   backgroundColor: task.color ? task.color : undefined,
                                   color: task.color ? '#1d2736' : undefined,
@@ -245,6 +291,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                 {taskLogCount > 0 && (
                                   <span className="task-log-badge">💬{taskLogCount}</span>
                                 )}
+                                <span className="bar-edit-hint" aria-hidden="true">編集</span>
                               </motion.div>
                             </div>
                           );
@@ -531,6 +578,51 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           justify-content: center;
           font-size: 11px;
           font-weight: 900;
+        }
+
+        .bar-edit-hint {
+          position: absolute;
+          right: 8px;
+          bottom: -24px;
+          min-width: 40px;
+          height: 20px;
+          padding: 0 7px;
+          border-radius: 999px;
+          background: rgba(29, 39, 54, 0.88);
+          color: white;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          font-weight: 900;
+          opacity: 0;
+          transform: translateY(-2px);
+          pointer-events: none;
+          transition: opacity 0.16s ease, transform 0.16s ease;
+          z-index: 2;
+        }
+
+        .task-bar:hover .bar-edit-hint,
+        .task-bar:focus-visible .bar-edit-hint {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+          .bar-edit-hint {
+            top: 50%;
+            bottom: auto;
+            right: 8px;
+            transform: translateY(-50%);
+            opacity: 0.72;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+          }
+
+          .task-log-badge + .bar-edit-hint {
+            display: none;
+          }
         }
 
         .empty-state {
