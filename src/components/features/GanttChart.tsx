@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, ZoomIn, ZoomOut } from 'lucide-react';
 import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
 interface GanttChartProps {
@@ -29,14 +29,33 @@ const getTaskPeriods = (task: Task): Period[] => {
   return [{ start, end }];
 };
 
+const MIN_CELL_WIDTH = 32;
+const MAX_CELL_WIDTH = 96;
+const ZOOM_STEP = 8;
+
+const clampCellWidth = (value: number) => Math.min(MAX_CELL_WIDTH, Math.max(MIN_CELL_WIDTH, value));
+
+const getCellWidthForScale = (scale: 'sm' | 'md' | 'lg') => {
+  if (scale === 'sm') return 36;
+  if (scale === 'lg') return 64;
+  return 50;
+};
+
+const getTouchDistance = (touches: React.TouchList) => {
+  if (touches.length < 2) return 0;
+  const [first, second] = [touches[0], touches[1]];
+  return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+};
+
 export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUpdate, onEdit, onReorder, onDateClick, onOpenTaskLog }: GanttChartProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [uiScale, setUiScale] = React.useState<'sm' | 'md' | 'lg'>('md');
+  const [cellWidth, setCellWidth] = React.useState(50);
   const clickTimerRef = React.useRef<number | null>(null);
   const lastTapRef = React.useRef<{ taskId: string; time: number } | null>(null);
+  const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
 
   React.useEffect(() => {
-    setUiScale(storage.getSettings().uiScale || 'md');
+    setCellWidth(getCellWidthForScale(storage.getSettings().uiScale || 'md'));
   }, []);
 
   React.useEffect(() => {
@@ -45,7 +64,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     };
   }, []);
 
-  const cellWidth = uiScale === 'sm' ? 36 : uiScale === 'lg' ? 64 : 50;
+  const ganttStyle = {
+    '--gantt-cell-width': `${cellWidth}px`,
+  } as React.CSSProperties & Record<string, string>;
 
   const logCountByDate = useMemo(() => {
     return taskLogs.reduce<Record<string, number>>((acc, log) => {
@@ -138,6 +159,30 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     lastTapRef.current = { taskId: task.id, time: now };
   };
 
+  const updateZoom = (nextCellWidth: number) => {
+    setCellWidth(clampCellWidth(Math.round(nextCellWidth)));
+  };
+
+  const handleTimelineTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 2) return;
+    pinchRef.current = {
+      distance: getTouchDistance(event.touches),
+      cellWidth,
+    };
+    clearPendingTaskLogOpen();
+  };
+
+  const handleTimelineTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 2 || !pinchRef.current) return;
+    const distance = getTouchDistance(event.touches);
+    if (distance <= 0 || pinchRef.current.distance <= 0) return;
+    updateZoom(pinchRef.current.cellWidth * (distance / pinchRef.current.distance));
+  };
+
+  const handleTimelineTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length < 2) pinchRef.current = null;
+  };
+
   return (
     <>
       <div className={`gantt-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}>
@@ -149,16 +194,43 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
             </button>
           </div>
         )}
-        <div className="gantt-container">
+        <div
+          className="gantt-container"
+          style={ganttStyle}
+          onTouchStart={handleTimelineTouchStart}
+          onTouchMove={handleTimelineTouchMove}
+          onTouchEnd={handleTimelineTouchEnd}
+          onTouchCancel={() => { pinchRef.current = null; }}
+        >
           {/* Timeline Header */}
           <div className="gantt-header">
             <div className="task-name-col header">
               <span>工程名</span>
-              {!isFullscreen && (
-                <button className="icon-btn-small" onClick={() => setIsFullscreen(true)} title="全画面で表示">
-                  <Maximize size={14} />
+              <div className="gantt-header-actions">
+                <button
+                  className="icon-btn-small"
+                  onClick={() => updateZoom(cellWidth - ZOOM_STEP)}
+                  title="縮小"
+                  aria-label="工程表を縮小"
+                  disabled={cellWidth <= MIN_CELL_WIDTH}
+                >
+                  <ZoomOut size={14} />
                 </button>
-              )}
+                <button
+                  className="icon-btn-small"
+                  onClick={() => updateZoom(cellWidth + ZOOM_STEP)}
+                  title="拡大"
+                  aria-label="工程表を拡大"
+                  disabled={cellWidth >= MAX_CELL_WIDTH}
+                >
+                  <ZoomIn size={14} />
+                </button>
+                {!isFullscreen && (
+                  <button className="icon-btn-small" onClick={() => setIsFullscreen(true)} title="全画面で表示">
+                    <Maximize size={14} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="timeline-scroll-area">
               <div className="timeline-days">
@@ -322,6 +394,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           flex-direction: column;
           overflow: hidden;
           width: 100%;
+          touch-action: pan-x pan-y;
         }
 
         .gantt-header {
@@ -662,6 +735,22 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
 
         .icon-btn-small:hover {
           background: var(--surface-hover); color: var(--primary);
+        }
+
+        .icon-btn-small:disabled {
+          cursor: not-allowed;
+          opacity: 0.35;
+        }
+
+        .icon-btn-small:disabled:hover {
+          background: transparent;
+          color: var(--text-sub);
+        }
+
+        .gantt-header-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
         }
       `}</style>
     </>
