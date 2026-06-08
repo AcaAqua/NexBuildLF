@@ -489,36 +489,39 @@ function ProjectDetailContent() {
         <section className="project-workspace" aria-label="案件内メニュー">
           <div className="project-browser-tabs glass">
             <div className="workspace-tabs" role="tablist" aria-label="案件内表示切替">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={workspaceTab === 'chart'}
-              className={`workspace-tab ${workspaceTab === 'chart' ? 'active' : ''}`}
-              onClick={() => setWorkspaceTab('chart')}
-            >
-              <GanttChartSquare size={18} />
-              <span>工程表</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={workspaceTab === 'tasks'}
-              className={`workspace-tab ${workspaceTab === 'tasks' ? 'active' : ''}`}
-              onClick={() => setWorkspaceTab('tasks')}
-            >
-              <ListTodo size={18} />
-              <span>工程一覧</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={workspaceTab === 'timeline'}
-              className={`workspace-tab ${workspaceTab === 'timeline' ? 'active' : ''}`}
-              onClick={() => setWorkspaceTab('timeline')}
-            >
-              <History size={18} />
-              <span>工程記録タイムライン</span>
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspaceTab === 'chart'}
+                className={`workspace-tab ${workspaceTab === 'chart' ? 'active' : ''}`}
+                onClick={() => setWorkspaceTab('chart')}
+              >
+                <GanttChartSquare size={18} />
+                <span>工程表</span>
+                <small>日程と担当</small>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspaceTab === 'tasks'}
+                className={`workspace-tab ${workspaceTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => setWorkspaceTab('tasks')}
+              >
+                <ListTodo size={18} />
+                <span>工程一覧</span>
+                <small>状態と操作</small>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspaceTab === 'timeline'}
+                className={`workspace-tab ${workspaceTab === 'timeline' ? 'active' : ''}`}
+                onClick={() => setWorkspaceTab('timeline')}
+              >
+                <History size={18} />
+                <span>工程記録</span>
+                <small>写真と申し送り</small>
+              </button>
             </div>
 
             <button className="btn btn-primary btn-sm workspace-add-task" onClick={() => { setEditingTask(undefined); setIsModalOpen(true); }}>
@@ -528,25 +531,6 @@ function ProjectDetailContent() {
           </div>
 
           <div className="project-tab-body">
-            <div className="workspace-panel-heading">
-              <div className="section-title">
-                <h2>
-                  {workspaceTab === 'chart'
-                    ? '工程表'
-                    : workspaceTab === 'tasks'
-                      ? '工程一覧'
-                      : '工程記録タイムライン'}
-                </h2>
-                <span>
-                  {workspaceTab === 'chart'
-                    ? '横長チャートを広く使って日程と担当を確認'
-                    : workspaceTab === 'tasks'
-                      ? '工程ごとの状態・担当・記録を一覧で管理'
-                      : '写真・メモ・申し送りを時系列で確認'}
-                </span>
-              </div>
-            </div>
-
             {workspaceTab !== 'timeline' && (
               <div className="filter-bar glass">
                 <div className="filter-group">
@@ -1149,22 +1133,33 @@ function ProjectDetailContent() {
           flex-direction: column;
           gap: 0;
           min-width: 0;
+          margin-top: 22px;
         }
 
         .project-browser-tabs {
           position: sticky;
           top: 0;
-          z-index: 8;
+          z-index: 12;
           display: flex;
           align-items: stretch;
           justify-content: space-between;
-          gap: 12px;
-          padding: 8px 10px 0;
-          border: 1px solid var(--border-light);
-          border-bottom: none;
-          border-radius: var(--radius-md) var(--radius-md) 0 0;
-          background: color-mix(in srgb, var(--surface) 94%, transparent);
-          box-shadow: var(--shadow-sm);
+          gap: 14px;
+          min-width: 0;
+          padding: 0 0 0 18px;
+          border-bottom: 1px solid var(--border-light);
+          border-radius: 0;
+          background: color-mix(in srgb, var(--background) 96%, transparent);
+          box-shadow: none;
+        }
+
+        .project-browser-tabs::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: -1px;
+          height: 1px;
+          background: var(--border-light);
         }
 
         .project-tab-body {
@@ -1172,18 +1167,12 @@ function ProjectDetailContent() {
           flex-direction: column;
           gap: 14px;
           min-width: 0;
-          padding: 16px;
-          border: 1px solid var(--border-light);
-          border-radius: 0 0 var(--radius-md) var(--radius-md);
-          background: var(--surface);
-          box-shadow: var(--shadow-sm);
+          padding: 16px 0 0;
+          background: transparent;
         }
 
         .workspace-panel-heading {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 12px;
+          display: none;
         }
 
         .section-title {
@@ -1196,6 +1185,71 @@ function ProjectDetailContent() {
           font-size: 12px;
           font-weight: 700;
           color: var(--text-sub);
+        }
+
+        .workspace-tabs {
+          display: flex;
+          align-items: flex-end;
+          gap: 4px;
+          min-width: 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .workspace-tabs::-webkit-scrollbar {
+          display: none;
+        }
+
+        .workspace-tab {
+          min-height: 70px;
+          min-width: 220px;
+          border: 1px solid transparent;
+          border-bottom: none;
+          border-radius: 12px 12px 0 0;
+          background: color-mix(in srgb, var(--surface-hover) 78%, transparent);
+          color: var(--text-sub);
+          display: grid;
+          grid-template-columns: auto 1fr;
+          grid-template-rows: auto auto;
+          align-content: center;
+          align-items: center;
+          column-gap: 10px;
+          row-gap: 3px;
+          padding: 10px 18px 11px;
+          font-size: 14px;
+          font-weight: 900;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+        }
+
+        .workspace-tab svg {
+          grid-row: 1 / span 2;
+          flex-shrink: 0;
+        }
+
+        .workspace-tab small {
+          grid-column: 2;
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.2;
+          opacity: 0.9;
+        }
+
+        .workspace-tab.active {
+          position: relative;
+          z-index: 1;
+          min-height: 78px;
+          background: var(--surface);
+          color: var(--primary);
+          border-color: var(--border-light);
+          box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+          transform: translateY(1px);
+        }
+
+        .workspace-tab.active small {
+          color: var(--text-main);
         }
 
         .view-toggle {
@@ -1244,50 +1298,6 @@ function ProjectDetailContent() {
           align-items: center;
         }
 
-        .workspace-tabs {
-          display: flex;
-          align-items: flex-end;
-          gap: 4px;
-          min-width: 0;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .workspace-tabs::-webkit-scrollbar {
-          display: none;
-        }
-
-        .workspace-tab {
-          min-height: 46px;
-          min-width: max-content;
-          border: 1px solid transparent;
-          border-bottom: none;
-          border-radius: 10px 10px 0 0;
-          background: var(--surface-hover);
-          color: var(--text-sub);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 0 16px;
-          font-size: 13px;
-          font-weight: 900;
-          cursor: pointer;
-          transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
-        }
-
-        .workspace-tab svg {
-          flex-shrink: 0;
-        }
-
-        .workspace-tab.active {
-          position: relative;
-          background: var(--surface);
-          color: var(--primary);
-          border-color: var(--border-light);
-          box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
-        }
-
         .workspace-tab.active::after {
           content: '';
           position: absolute;
@@ -1300,20 +1310,21 @@ function ProjectDetailContent() {
 
         .workspace-add-task {
           flex: 0 0 auto;
-          align-self: center;
-          margin-bottom: 8px;
+          align-self: flex-end;
+          min-height: 46px;
+          margin: 0 0 12px;
         }
 
         .workspace-pane {
-          display: none;
+          display: none !important;
         }
 
         .workspace-pane.active {
-          display: block;
+          display: block !important;
         }
 
         .workspace-pane:not(.active) {
-          display: none;
+          display: none !important;
         }
 
         h2 {
@@ -2448,27 +2459,57 @@ function ProjectDetailContent() {
             top: 0;
             margin-left: -4px;
             margin-right: -4px;
-            padding: 6px 6px 0;
+            padding: 0 0 0 6px;
             gap: 8px;
             align-items: flex-end;
           }
 
           .project-tab-body {
-            padding: 12px;
+            padding-top: 12px;
           }
 
           .workspace-tabs {
             flex: 1 1 auto;
+            gap: 2px;
           }
 
           .workspace-tab {
-            min-height: 44px;
-            padding: 0 12px;
-            font-size: 12px;
+            min-width: 0;
+            flex: 1 1 0;
+            min-height: 58px;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto;
+            justify-items: center;
+            row-gap: 3px;
+            padding: 6px 4px 7px;
+            font-size: 11px;
+            text-align: center;
+          }
+
+          .workspace-tab.active {
+            min-height: 64px;
+          }
+
+          .workspace-tab svg {
+            grid-row: auto;
+            width: 16px;
+            height: 16px;
+          }
+
+          .workspace-tab small {
+            grid-column: auto;
+            font-size: 10px;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
 
           .workspace-tab span {
             white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
 
           .workspace-add-task {
