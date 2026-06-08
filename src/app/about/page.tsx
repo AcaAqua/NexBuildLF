@@ -8,17 +8,19 @@ import { motion } from 'framer-motion';
 export default function AboutPage() {
   return (
     <MainLayout>
-      <div className="about-page">
-        <header className="about-header">
+      <div className="about-page app-page">
+        <header className="about-header compact-page-header">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="logo-icon"
           >
-            <Zap size={48} fill="currentColor" />
+            <Zap size={22} fill="currentColor" />
           </motion.div>
-          <h1>工程管理 Pro <span className="version">v1.1.0</span></h1>
-          <p className="subtitle">次世代の現場監督のための、直感的スケジュール管理ツール</p>
+          <div className="about-title">
+            <h1>工程管理 Pro <span className="version">v1.1.0</span></h1>
+            <p className="subtitle">現場端末向けの工程表・記録管理</p>
+          </div>
         </header>
 
         <div className="about-content">
@@ -87,37 +89,34 @@ export default function AboutPage() {
 
       <style jsx>{`
         .about-page {
-          max-width: 800px;
+          max-width: 920px;
           margin: 0 auto;
-          padding: 40px 20px;
+          padding: 0;
         }
 
         .about-header {
-          text-align: center;
-          margin-bottom: 48px;
+          justify-content: flex-start;
         }
 
         .logo-icon {
-          width: 80px;
-          height: 80px;
+          width: 44px;
+          height: 44px;
           background: var(--primary-pastel);
           color: var(--primary);
-          border-radius: 20px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 20px;
+          flex: 0 0 auto;
         }
 
         .about-header h1 {
-          font-size: 32px;
+          font-size: 18px;
           font-weight: 900;
           color: var(--text-main);
-          margin-bottom: 8px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 12px;
+          gap: 8px;
         }
 
         .version {
@@ -126,13 +125,13 @@ export default function AboutPage() {
           padding: 4px 10px;
           border-radius: 20px;
           color: var(--text-sub);
-          font-weight: 600;
+          font-weight: 900;
         }
 
         .subtitle {
           color: var(--text-sub);
-          font-size: 16px;
-          font-weight: 500;
+          font-size: 12px;
+          font-weight: 800;
         }
 
         .about-content {

@@ -8,11 +8,39 @@ import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project
 import { formatDataSize } from "@/lib/photoUtils";
 
 type SettingsTab = 'display' | 'profile' | 'data' | 'field';
+type ShareMode = 'all' | 'projects' | 'partners';
+
+const SHARE_MODE_META: Record<ShareMode, { label: string; detail: string; scope: BackupScope }> = {
+  all: {
+    label: '全データ',
+    detail: '現場・業者・設定をまとめて共有',
+    scope: { projects: true, partners: true, settings: true },
+  },
+  projects: {
+    label: '現場のみ',
+    detail: '工程表・記録・写真を共有',
+    scope: { projects: true, partners: false, settings: false },
+  },
+  partners: {
+    label: '業者のみ',
+    detail: '協力業者マスターだけ共有',
+    scope: { projects: false, partners: true, settings: false },
+  },
+};
+
+interface BackupScope {
+  projects: boolean;
+  partners: boolean;
+  settings: boolean;
+}
 
 interface BackupData {
   app?: string;
   version?: number;
   exportedAt?: string;
+  shareScope?: BackupScope;
+  shareLabel?: string;
+  checkCode?: string;
   projects: Project[];
   partners: Partner[];
   settings: SettingsType;
@@ -26,6 +54,9 @@ interface ImportSummary {
   exportedAt?: string;
   fileName: string;
   diff: ImportDiff;
+  scope: BackupScope;
+  scopeLabel: string;
+  checkCode: string;
 }
 
 interface DiffCounts {
@@ -121,6 +152,7 @@ export default function SettingsPage() {
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [importMessage, setImportMessage] = useState('');
   const [shareMessage, setShareMessage] = useState('');
+  const [shareMode, setShareMode] = useState<ShareMode>('all');
   const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -198,19 +230,27 @@ export default function SettingsPage() {
     }
   };
 
-  const createBackupData = (): BackupData => ({
+  const createBackupData = (): BackupData => {
+    const mode = SHARE_MODE_META[shareMode];
+    const data: BackupData = {
       app: 'kouteikanri',
       version: 1,
       exportedAt: new Date().toISOString(),
-      projects: storage.getProjects(),
-      partners: storage.getPartners(),
-      settings: storage.getSettings()
-  });
+      shareScope: mode.scope,
+      shareLabel: mode.label,
+      projects: mode.scope.projects ? storage.getProjects() : [],
+      partners: mode.scope.partners ? storage.getPartners() : [],
+      settings: mode.scope.settings ? storage.getSettings() : { companyName: '', userName: '', qualifications: '', uiScale: 'md' },
+    };
+    data.checkCode = createCheckCode(JSON.stringify({ ...data, checkCode: '' }));
+    return data;
+  };
 
   const createBackupFile = () => {
     const data = createBackupData();
     const jsonStr = JSON.stringify(data, null, 2);
-    const fileName = `kouteikanri_share_${new Date().toISOString().split('T')[0]}.json`;
+    const suffix = shareMode === 'all' ? 'all' : shareMode;
+    const fileName = `kouteikanri_share_${suffix}_${new Date().toISOString().split('T')[0]}.json`;
     return new File([jsonStr], fileName, { type: 'application/json' });
   };
 
@@ -236,7 +276,7 @@ export default function SettingsPage() {
       if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         await navigator.share({
           title: '工程管理データ',
-          text: '工程管理 Proの共有データです。同じアプリの設定画面から取り込み前に差分確認できます。',
+          text: `${SHARE_MODE_META[shareMode].label}の共有データです。同じアプリの設定画面から差分確認できます。`,
           files: [file],
         });
         setShareMessage('共有データを送信しました。');
@@ -279,6 +319,9 @@ export default function SettingsPage() {
           exportedAt: data.exportedAt,
           fileName: file.name,
           diff: buildImportDiff(data),
+          scope: getBackupScope(data),
+          scopeLabel: data.shareLabel || getScopeLabel(getBackupScope(data)),
+          checkCode: data.checkCode || createCheckCode(JSON.stringify(data)),
         });
       } catch (err) {
         setImportMessage('ファイルの読み込みに失敗しました。');
@@ -291,10 +334,17 @@ export default function SettingsPage() {
   const handleConfirmImport = () => {
     if (!pendingImport) return;
     try {
-      localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
-      localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
-      storage.saveSettings(pendingImport.settings);
-      setImportMessage('復元しました。画面を更新します。');
+      const scope = getBackupScope(pendingImport);
+      if (scope.projects) {
+        localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
+      }
+      if (scope.partners) {
+        localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
+      }
+      if (scope.settings) {
+        storage.saveSettings(pendingImport.settings);
+      }
+      setImportMessage(`${getScopeLabel(scope)}を取り込みました。画面を更新します。`);
       window.setTimeout(() => window.location.reload(), 600);
     } catch (error) {
       setImportMessage(getStorageWriteErrorMessage(error, 'バックアップを復元'));
@@ -488,6 +538,26 @@ export default function SettingsPage() {
           <section className="settings-card glass">
             <h2>データ管理・バックアップ</h2>
             <p className="description">同じアプリ同士で共有用データを送り、受信側で差分を確認してから取り込みます。</p>
+
+            <div className="share-scope-panel" aria-label="共有範囲">
+              {Object.entries(SHARE_MODE_META).map(([key, item]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`share-scope-btn ${shareMode === key ? 'active' : ''}`}
+                  onClick={() => setShareMode(key as ShareMode)}
+                >
+                  <strong>{item.label}</strong>
+                  <span>{item.detail}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="share-flow">
+              <div><span>1</span>共有範囲を選ぶ</div>
+              <div><span>2</span>LINE・メール等で送る</div>
+              <div><span>3</span>受信側で差分確認</div>
+            </div>
             
             <div className="backup-actions">
               <button className="btn-action share" onClick={handleShare}>
@@ -525,6 +595,14 @@ export default function SettingsPage() {
                 </div>
                 <dl>
                   <div>
+                    <dt>共有範囲</dt>
+                    <dd>{importSummary.scopeLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>確認コード</dt>
+                    <dd>{importSummary.checkCode}</dd>
+                  </div>
+                  <div>
                     <dt>現場</dt>
                     <dd>{importSummary.projects}件</dd>
                   </div>
@@ -546,18 +624,23 @@ export default function SettingsPage() {
                   </div>
                 </dl>
                 <div className="diff-panel" aria-label="現在の端末との差分">
+                  {importSummary.scope.projects && (
                   <div className="diff-row">
                     <strong>現場</strong>
                     <span className="diff-add">追加 {importSummary.diff.projects.added}</span>
                     <span className="diff-update">更新 {importSummary.diff.projects.updated}</span>
                     <span className="diff-remove">消える {importSummary.diff.projects.removed}</span>
                   </div>
+                  )}
+                  {importSummary.scope.partners && (
                   <div className="diff-row">
                     <strong>協力業者</strong>
                     <span className="diff-add">追加 {importSummary.diff.partners.added}</span>
                     <span className="diff-update">更新 {importSummary.diff.partners.updated}</span>
                     <span className="diff-remove">消える {importSummary.diff.partners.removed}</span>
                   </div>
+                  )}
+                  {importSummary.scope.projects && (
                   <div className="diff-row">
                     <strong>写真</strong>
                     <span>{importSummary.diff.currentPhotos}枚 → {importSummary.diff.incomingPhotos}枚</span>
@@ -565,8 +648,9 @@ export default function SettingsPage() {
                       {importSummary.diff.photoDelta >= 0 ? '+' : ''}{importSummary.diff.photoDelta}
                     </span>
                   </div>
+                  )}
                 </div>
-                <p className="restore-warning">取り込むと現在の端末データは、この共有データで上書きされます。</p>
+                <p className="restore-warning">取り込むと対象範囲の端末データだけが、この共有データで上書きされます。</p>
                 <div className="restore-actions">
                   <button type="button" className="btn btn-primary" onClick={handleConfirmImport}>
                     この内容で取り込む
@@ -789,6 +873,92 @@ export default function SettingsPage() {
           display: flex;
           flex-direction: column;
           gap: 12px;
+        }
+
+        .share-scope-panel {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          padding: 8px;
+          margin-bottom: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
+          background: var(--surface-hover);
+        }
+
+        .share-scope-btn {
+          min-height: 72px;
+          padding: 10px;
+          border: 1px solid transparent;
+          border-radius: var(--radius-md);
+          background: transparent;
+          color: var(--text-sub);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 3px;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+        }
+
+        .share-scope-btn strong {
+          color: var(--text-main);
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .share-scope-btn span {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.35;
+        }
+
+        .share-scope-btn.active {
+          background: #ffffff;
+          border-color: var(--primary);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .share-scope-btn.active strong,
+        .share-scope-btn.active span {
+          color: var(--primary);
+        }
+
+        .share-flow {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .share-flow div {
+          min-height: 42px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-light);
+          background: #ffffff;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .share-flow span {
+          width: 24px;
+          height: 24px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          background: var(--primary);
+          color: var(--text-on-primary);
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .btn-action {
@@ -1309,6 +1479,11 @@ export default function SettingsPage() {
             grid-template-columns: 1fr;
           }
 
+          .share-scope-panel,
+          .share-flow {
+            grid-template-columns: 1fr;
+          }
+
           .diff-row {
             grid-template-columns: 1fr;
             align-items: stretch;
@@ -1386,6 +1561,26 @@ function buildImportDiff(incoming: BackupData): ImportDiff {
     incomingPhotos,
     photoDelta: incomingPhotos - currentPhotos,
   };
+}
+
+function getBackupScope(data: BackupData): BackupScope {
+  return data.shareScope || { projects: true, partners: true, settings: true };
+}
+
+function getScopeLabel(scope: BackupScope) {
+  if (scope.projects && scope.partners && scope.settings) return '全データ';
+  if (scope.projects && !scope.partners) return '現場のみ';
+  if (!scope.projects && scope.partners) return '業者のみ';
+  return '共有データ';
+}
+
+function createCheckCode(text: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).toUpperCase().slice(0, 6).padStart(6, '0');
 }
 
 function formatBackupDate(value?: string) {

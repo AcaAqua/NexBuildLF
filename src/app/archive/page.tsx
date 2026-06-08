@@ -51,14 +51,14 @@ export default function ArchivePage() {
 
   return (
     <MainLayout>
-      <div className="archive-container">
-        <header className="archive-header">
+      <div className="archive-container app-page">
+        <header className="archive-header compact-page-header">
           <div className="header-text">
             <div className="title-row">
-              <Archive size={28} className="header-icon" />
-              <h1>アーカイブ保管室</h1>
+              <Archive size={20} className="header-icon" />
+              <h1>保管室</h1>
             </div>
-            <p>過去に完了した現場や、非表示にした現場の記録を検索・閲覧できます</p>
+            <p>保管した現場を検索・復元</p>
           </div>
           <div className="header-actions">
             <ExportMenu 
@@ -68,16 +68,18 @@ export default function ArchivePage() {
           </div>
         </header>
 
-        <FilterBar
-          typeFilter={typeFilter}
-          setTypeFilter={setTypeFilter}
-          companyFilter={companyFilter}
-          setCompanyFilter={setCompanyFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
+        <div className="page-toolbar">
+          <FilterBar
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            companyFilter={companyFilter}
+            setCompanyFilter={setCompanyFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+          />
+        </div>
 
-        <section className="projects-grid">
+        <section className="projects-grid entity-grid auto">
           {filteredProjects.length === 0 ? (
             <div className="empty-state glass">
               アーカイブされた現場はありません。
@@ -116,20 +118,20 @@ export default function ArchivePage() {
         .archive-container {
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 18px;
         }
 
         .archive-header {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
         }
 
         @media (min-width: 640px) {
           .archive-header {
             flex-direction: row;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
           }
         }
 
@@ -137,7 +139,7 @@ export default function ArchivePage() {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-bottom: 8px;
+          margin-bottom: 2px;
         }
 
         .header-icon {
@@ -145,14 +147,15 @@ export default function ArchivePage() {
         }
 
         .header-text h1 {
-          font-size: 24px;
-          font-weight: 800;
+          font-size: 16px;
+          font-weight: 900;
           color: var(--text-main);
         }
 
         .header-text p {
           color: var(--text-sub);
-          font-size: 14px;
+          font-size: 12px;
+          font-weight: 800;
         }
 
         .header-actions {
@@ -164,7 +167,7 @@ export default function ArchivePage() {
         .projects-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
         }
 
         @media (min-width: 768px) {
