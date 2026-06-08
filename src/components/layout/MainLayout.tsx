@@ -26,6 +26,7 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const isNavActive = (href: string) => pathname === href || (pathname === '/project' && href === '/');
 
   useEffect(() => {
     // UIスケールの適用
@@ -63,7 +64,25 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
   if (!mounted) return <div className="app-shell" style={{ background: 'var(--background)' }} />;
 
   return (
-    <div className={`app-shell ${hideNav ? 'nav-hidden' : ''}`}>
+    <div className={`app-shell ${hideNav ? 'nav-hidden' : ''} ${!hideNav ? 'top-nav-shell' : ''}`}>
+      {!hideNav && (
+        <header className="desktop-top-nav glass">
+          <Link href="/" className="top-nav-brand" style={{ textDecoration: 'none' }}>
+            工程管理 Pro
+          </Link>
+          <nav className="top-nav-items" aria-label="メインメニュー">
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href} className="top-nav-link" style={{ textDecoration: 'none' }}>
+                <div className={`top-nav-item ${isNavActive(item.href) ? 'active' : ''}`}>
+                  <item.icon size={21} />
+                  <span>{item.label}</span>
+                </div>
+              </Link>
+            ))}
+          </nav>
+        </header>
+      )}
+
       {/* Sidebar for Desktop/Tablet */}
       {!hideNav && (
         <aside className="sidebar glass">
@@ -73,7 +92,7 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
           <nav className="sidebar-nav">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
-                <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
+                <div className={`nav-item ${isNavActive(item.href) ? 'active' : ''}`}>
                   <item.icon size={22} />
                   <span>{item.label}</span>
                 </div>
@@ -141,6 +160,10 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
           background-color: var(--background);
         }
 
+        .desktop-top-nav {
+          display: none;
+        }
+
         /* Sidebar (Tablet/Desktop) */
         .sidebar {
           width: 260px;
@@ -188,6 +211,11 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
         .nav-item.active {
           background-color: var(--primary-pastel);
           color: var(--primary);
+        }
+
+        .top-nav-brand,
+        .top-nav-link {
+          text-decoration: none !important;
         }
 
         /* Main Content */
@@ -318,9 +346,96 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
 
         /* Breakpoints */
         @media (min-width: 768px) {
-          .sidebar {
-            display: flex;
+          .top-nav-shell {
+            flex-direction: column;
           }
+
+          .desktop-top-nav {
+            display: flex;
+            align-items: stretch;
+            gap: 18px;
+            height: 72px;
+            padding: 0 24px;
+            border-bottom: 1px solid var(--border-light);
+            z-index: 20;
+          }
+
+          .top-nav-brand {
+            display: inline-flex;
+            align-items: center;
+            flex: 0 0 auto;
+            min-width: 184px;
+            color: var(--primary);
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 0;
+            white-space: nowrap;
+          }
+
+          .top-nav-items {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+          }
+
+          .top-nav-items::-webkit-scrollbar {
+            display: none;
+          }
+
+          .top-nav-link {
+            color: inherit;
+            flex: 0 0 auto;
+          }
+
+          .top-nav-item {
+            min-width: 148px;
+            min-height: 58px;
+            padding: 0 18px;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            color: var(--text-sub);
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 900;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+          }
+
+          .top-nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-main);
+          }
+
+          .top-nav-item.active {
+            position: relative;
+            min-height: 66px;
+            background: var(--surface);
+            border-color: var(--border-light);
+            color: var(--primary);
+            box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.06);
+          }
+
+          .top-nav-item.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 2px;
+            background: var(--surface);
+          }
+
+          .sidebar {
+            display: none;
+          }
+
           .bottom-nav, .mobile-header {
             display: none;
           }
@@ -329,6 +444,10 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
           }
           .page-wrapper {
             padding: 40px;
+          }
+
+          .top-nav-shell .page-wrapper {
+            padding: 32px 40px 40px;
           }
 
           .offline-banner {
