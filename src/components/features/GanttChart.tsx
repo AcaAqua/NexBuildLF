@@ -493,9 +493,9 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
       <style jsx>{`
         .gantt-wrapper {
           width: 100%;
-          background: var(--surface);
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border-light);
+          background: #ffffff;
+          border-radius: 0;
+          border: none;
           overflow: hidden;
           display: flex;
           flex-direction: column;
@@ -561,7 +561,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
 
         .gantt-header {
           display: flex;
-          border-bottom: 1px solid var(--border-light);
+          border-bottom: 1px solid var(--border);
           width: 100%;
           position: sticky;
           top: 0;
@@ -578,21 +578,21 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           width: var(--gantt-sidebar-width);
           min-width: var(--gantt-sidebar-width);
           padding: 12px 16px;
-          background: var(--surface);
+          background: #fbfdff;
           z-index: 30;
           display: flex;
           align-items: center;
           gap: 10px;
           transition: all 0.2s;
-          border-right: 1px solid var(--gantt-grid-line);
-          box-shadow: 4px 0 8px rgba(0, 0, 0, 0.02);
+          border-right: 1px solid var(--border);
+          box-shadow: 6px 0 12px rgba(26, 43, 64, 0.06);
         }
 
         .task-name-col.header {
           font-weight: 800;
           font-size: 12px;
-          color: var(--text-sub);
-          background: var(--background);
+          color: var(--text-main);
+          background: #f0f5fb;
           justify-content: space-between;
           height: 60px;
           position: sticky;
@@ -676,7 +676,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           align-items: center;
           justify-content: center;
           border-right: 1px solid var(--gantt-grid-line);
-          background: var(--surface);
+          background: #fbfdff;
           cursor: pointer;
           position: relative;
           transition: all 0.2s;
@@ -705,7 +705,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
         }
 
         .day-num { font-size: 14px; font-weight: 700; }
-        .day-name { font-size: 10px; font-weight: 600; opacity: 0.6; }
+        .day-name { font-size: 10px; font-weight: 800; opacity: 0.75; }
 
         .today-label {
           position: absolute;
@@ -763,7 +763,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           width: var(--gantt-cell-width);
           height: 100%;
           border-right: 1px solid var(--gantt-grid-line);
-          opacity: 0.75;
+          opacity: 1;
         }
 
         .grid-line.sat {
@@ -802,7 +802,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           color: white;
           font-size: 13px;
           font-weight: 800;
-          box-shadow: var(--shadow-sm);
+          box-shadow: 0 6px 14px rgba(26, 43, 64, 0.16);
           position: relative;
           cursor: grab;
           overflow: visible;
@@ -812,7 +812,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           user-select: none;
         }
 
-        .task-bar.pending { background: #d2d2d7; color: #86868b; }
+        .task-bar.pending { background: #e4e8ee; color: #394554; border: 1px solid #aeb8c6; }
         .task-bar.doing { background: var(--primary-pastel); color: var(--primary); border: 1px solid var(--primary); }
         .task-bar.done { background: var(--success-pastel); color: var(--success); border: 1px solid var(--success); }
         .task-bar.hold { background: var(--warning-pastel); color: var(--warning); border: 1px solid var(--warning); }

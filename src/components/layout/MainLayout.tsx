@@ -353,8 +353,10 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
             gap: 18px;
             height: 72px;
             padding: 0 24px;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border);
             z-index: 20;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 8px 20px rgba(26, 43, 64, 0.08);
           }
 
           .top-nav-brand {
@@ -414,9 +416,9 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
             position: relative;
             min-height: 66px;
             background: var(--surface);
-            border-color: var(--border-light);
+            border-color: var(--border);
             color: var(--primary);
-            box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 -4px 18px rgba(26, 43, 64, 0.12);
           }
 
           .top-nav-item.active::after {
