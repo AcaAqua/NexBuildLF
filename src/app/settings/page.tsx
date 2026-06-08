@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw, ListChecks, Fingerprint, ZoomIn, ClipboardCheck } from "lucide-react";
+import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw, ListChecks, Fingerprint, ZoomIn, ClipboardCheck, Share2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
@@ -25,6 +25,22 @@ interface ImportSummary {
   dataSize: number;
   exportedAt?: string;
   fileName: string;
+  diff: ImportDiff;
+}
+
+interface DiffCounts {
+  added: number;
+  updated: number;
+  removed: number;
+  unchanged: number;
+}
+
+interface ImportDiff {
+  projects: DiffCounts;
+  partners: DiffCounts;
+  currentPhotos: number;
+  incomingPhotos: number;
+  photoDelta: number;
 }
 
 interface FieldDeviceCheck {
@@ -104,6 +120,7 @@ export default function SettingsPage() {
   const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [importMessage, setImportMessage] = useState('');
+  const [shareMessage, setShareMessage] = useState('');
   const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -181,23 +198,57 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExport = () => {
-    const data: BackupData = {
+  const createBackupData = (): BackupData => ({
       app: 'kouteikanri',
       version: 1,
       exportedAt: new Date().toISOString(),
       projects: storage.getProjects(),
       partners: storage.getPartners(),
       settings: storage.getSettings()
-    };
+  });
+
+  const createBackupFile = () => {
+    const data = createBackupData();
     const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const fileName = `kouteikanri_share_${new Date().toISOString().split('T')[0]}.json`;
+    return new File([jsonStr], fileName, { type: 'application/json' });
+  };
+
+  const downloadBackupFile = (file: File) => {
+    const blob = new Blob([file], { type: file.type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `kouteikanri_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = file.name.replace('share', 'backup');
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    downloadBackupFile(createBackupFile());
+  };
+
+  const handleShare = async () => {
+    setShareMessage('');
+    const file = createBackupFile();
+
+    try {
+      if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+        await navigator.share({
+          title: '工程管理データ',
+          text: '工程管理 Proの共有データです。同じアプリの設定画面から取り込み前に差分確認できます。',
+          files: [file],
+        });
+        setShareMessage('共有データを送信しました。');
+        return;
+      }
+
+      downloadBackupFile(file);
+      setShareMessage('この端末では直接共有に未対応のため、共有用ファイルを保存しました。LINE・メールへ添付してください。');
+    } catch (error) {
+      downloadBackupFile(file);
+      setShareMessage('共有を完了できなかったため、共有用ファイルを保存しました。');
+    }
   };
 
   const isBackupData = (value: unknown): value is BackupData => {
@@ -227,6 +278,7 @@ export default function SettingsPage() {
           dataSize: file.size,
           exportedAt: data.exportedAt,
           fileName: file.name,
+          diff: buildImportDiff(data),
         });
       } catch (err) {
         setImportMessage('ファイルの読み込みに失敗しました。');
@@ -435,31 +487,40 @@ export default function SettingsPage() {
           <>
           <section className="settings-card glass">
             <h2>データ管理・バックアップ</h2>
-            <p className="description">現在の大切な工程データをPCやスマホに保存、または復元します。</p>
+            <p className="description">同じアプリ同士で共有用データを送り、受信側で差分を確認してから取り込みます。</p>
             
             <div className="backup-actions">
+              <button className="btn-action share" onClick={handleShare}>
+                <div className="action-icon share"><Share2 size={20} /></div>
+                <div className="action-text">
+                  <h3>LINE・メール・端末共有で送る</h3>
+                  <p>スマホの共有シートから相手へJSONデータを渡します</p>
+                </div>
+              </button>
+
               <button className="btn-action" onClick={handleExport}>
                 <div className="action-icon export"><Download size={20} /></div>
                 <div className="action-text">
-                  <h3>バックアップを作成 (エクスポート)</h3>
-                  <p>すべてのデータをファイルとして保存します</p>
+                  <h3>共有用ファイルを保存</h3>
+                  <p>Wi-Fi転送やメール添付用に端末へ保存します</p>
                 </div>
               </button>
 
               <label className="btn-action">
                 <div className="action-icon import"><Upload size={20} /></div>
                 <div className="action-text">
-                  <h3>バックアップを復元 (インポート)</h3>
-                  <p>保存したファイルからデータを読み込みます</p>
+                  <h3>受け取ったデータを差分チェック</h3>
+                  <p>取り込み前に現場・業者・写真の増減を確認します</p>
                 </div>
                 <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
               </label>
             </div>
+            {shareMessage && <p className="share-message" role="status">{shareMessage}</p>}
             {importMessage && <p className="import-message">{importMessage}</p>}
             {importSummary && (
               <div className="import-preview" role="status">
                 <div>
-                  <h3>復元内容の確認</h3>
+                  <h3>取り込み前の差分確認</h3>
                   <p>{importSummary.fileName}</p>
                 </div>
                 <dl>
@@ -484,10 +545,31 @@ export default function SettingsPage() {
                     <dd>{formatDataSize(importSummary.dataSize)}</dd>
                   </div>
                 </dl>
-                <p className="restore-warning">現在の保存データは、このバックアップ内容で上書きされます。</p>
+                <div className="diff-panel" aria-label="現在の端末との差分">
+                  <div className="diff-row">
+                    <strong>現場</strong>
+                    <span className="diff-add">追加 {importSummary.diff.projects.added}</span>
+                    <span className="diff-update">更新 {importSummary.diff.projects.updated}</span>
+                    <span className="diff-remove">消える {importSummary.diff.projects.removed}</span>
+                  </div>
+                  <div className="diff-row">
+                    <strong>協力業者</strong>
+                    <span className="diff-add">追加 {importSummary.diff.partners.added}</span>
+                    <span className="diff-update">更新 {importSummary.diff.partners.updated}</span>
+                    <span className="diff-remove">消える {importSummary.diff.partners.removed}</span>
+                  </div>
+                  <div className="diff-row">
+                    <strong>写真</strong>
+                    <span>{importSummary.diff.currentPhotos}枚 → {importSummary.diff.incomingPhotos}枚</span>
+                    <span className={importSummary.diff.photoDelta >= 0 ? 'diff-add' : 'diff-remove'}>
+                      {importSummary.diff.photoDelta >= 0 ? '+' : ''}{importSummary.diff.photoDelta}
+                    </span>
+                  </div>
+                </div>
+                <p className="restore-warning">取り込むと現在の端末データは、この共有データで上書きされます。</p>
                 <div className="restore-actions">
                   <button type="button" className="btn btn-primary" onClick={handleConfirmImport}>
-                    復元する
+                    この内容で取り込む
                   </button>
                   <button type="button" className="btn btn-outline" onClick={handleCancelImport}>
                     キャンセル
@@ -728,6 +810,11 @@ export default function SettingsPage() {
           border-color: var(--border);
         }
 
+        .btn-action.share {
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+        }
+
         .action-icon {
           width: 48px;
           height: 48px;
@@ -737,6 +824,7 @@ export default function SettingsPage() {
           justify-content: center;
         }
 
+        .action-icon.share { background: var(--primary); color: var(--text-on-primary); }
         .action-icon.export { background: #e6f7ff; color: #1890ff; }
         .action-icon.import { background: #f6ffed; color: #52c41a; }
 
@@ -753,11 +841,19 @@ export default function SettingsPage() {
           margin: 0;
         }
 
+        .share-message,
         .import-message {
           margin: 12px 0 0;
-          color: var(--warning);
           font-size: 13px;
           font-weight: 800;
+        }
+
+        .share-message {
+          color: var(--primary);
+        }
+
+        .import-message {
+          color: var(--warning);
         }
 
         .import-preview {
@@ -808,6 +904,58 @@ export default function SettingsPage() {
           color: var(--text-main);
           font-size: 14px;
           font-weight: 900;
+        }
+
+        .diff-panel {
+          display: grid;
+          gap: 8px;
+          margin: 14px 0;
+        }
+
+        .diff-row {
+          display: grid;
+          grid-template-columns: 92px repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          align-items: center;
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          background: var(--surface);
+          border: 1px solid var(--border-light);
+        }
+
+        .diff-row strong {
+          color: var(--text-main);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .diff-row span {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .diff-row .diff-add {
+          background: var(--success-pastel);
+          color: var(--success);
+        }
+
+        .diff-row .diff-update {
+          background: var(--primary-pastel);
+          color: var(--primary);
+        }
+
+        .diff-row .diff-remove {
+          background: #fff1f0;
+          color: var(--danger);
         }
 
         .restore-warning {
@@ -1161,6 +1309,15 @@ export default function SettingsPage() {
             grid-template-columns: 1fr;
           }
 
+          .diff-row {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+          }
+
+          .diff-row span {
+            justify-content: flex-start;
+          }
+
           .restore-actions {
             flex-direction: column;
           }
@@ -1185,6 +1342,50 @@ function countBackupPhotos(projects: Project[]) {
     }, 0);
     return total + taskPhotos + logPhotos;
   }, 0);
+}
+
+function countDiff<T extends { id: string }>(currentItems: T[], incomingItems: T[]): DiffCounts {
+  const currentMap = new Map(currentItems.map((item) => [item.id, item]));
+  const incomingMap = new Map(incomingItems.map((item) => [item.id, item]));
+
+  let added = 0;
+  let updated = 0;
+  let removed = 0;
+  let unchanged = 0;
+
+  incomingMap.forEach((incoming, id) => {
+    const current = currentMap.get(id);
+    if (!current) {
+      added += 1;
+      return;
+    }
+    if (JSON.stringify(current) === JSON.stringify(incoming)) {
+      unchanged += 1;
+      return;
+    }
+    updated += 1;
+  });
+
+  currentMap.forEach((_, id) => {
+    if (!incomingMap.has(id)) removed += 1;
+  });
+
+  return { added, updated, removed, unchanged };
+}
+
+function buildImportDiff(incoming: BackupData): ImportDiff {
+  const currentProjects = storage.getProjects();
+  const currentPartners = storage.getPartners();
+  const currentPhotos = countBackupPhotos(currentProjects);
+  const incomingPhotos = countBackupPhotos(incoming.projects);
+
+  return {
+    projects: countDiff(currentProjects, incoming.projects),
+    partners: countDiff(currentPartners, incoming.partners),
+    currentPhotos,
+    incomingPhotos,
+    photoDelta: incomingPhotos - currentPhotos,
+  };
 }
 
 function formatBackupDate(value?: string) {
