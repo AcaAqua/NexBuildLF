@@ -86,21 +86,21 @@ export default function ProjectCard({ id, title, type, status, location, progres
         .project-card-container {
           background: #ffffff;
           border-radius: var(--radius-lg);
-          border: 1px solid #d9e7f8;
-          padding: 28px;
-          padding-right: 168px;
-          min-height: 176px;
+          border: 1px solid transparent;
+          padding: 24px 28px;
+          padding-right: 150px;
+          min-height: 152px;
           display: flex;
           align-items: center;
           gap: 16px;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: 0 16px 42px rgba(0, 71, 160, 0.1);
+          box-shadow: none;
         }
 
         .project-card-container:hover {
           border-color: var(--primary);
-          box-shadow: var(--shadow-md);
+          background: #fbfdff;
         }
 
         .card-content {
@@ -113,22 +113,27 @@ export default function ProjectCard({ id, title, type, status, location, progres
           flex-direction: column;
           align-items: flex-start;
           gap: 8px;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
         }
 
         .type-tag {
           font-size: 11px;
-          font-weight: 700;
-          color: var(--text-sub);
+          font-weight: 900;
+          color: var(--primary);
+          background: var(--primary-pastel);
+          border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+          border-radius: 999px;
+          padding: 3px 9px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0;
           display: block;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          width: fit-content;
         }
 
         h3 {
-          font-size: 18px;
-          font-weight: 700;
+          font-size: 19px;
+          font-weight: 900;
           margin: 0;
           color: var(--text-main);
           letter-spacing: -0.3px;
@@ -136,9 +141,9 @@ export default function ProjectCard({ id, title, type, status, location, progres
         }
 
         .status-badge {
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
-          padding: 4px 10px;
+          padding: 6px 12px;
           border-radius: 20px;
           white-space: nowrap;
           order: -1;
@@ -149,7 +154,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
           display: flex;
           flex-wrap: wrap;
           gap: 16px;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
         }
 
         .meta-item {
@@ -158,6 +163,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
           gap: 6px;
           font-size: 13px;
           color: var(--text-sub);
+          font-weight: 800;
         }
 
         .progress-section {
@@ -168,7 +174,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
           display: flex;
           justify-content: space-between;
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 900;
           color: var(--text-sub);
           margin-bottom: 8px;
         }
@@ -178,15 +184,16 @@ export default function ProjectCard({ id, title, type, status, location, progres
         }
 
         .progress-track {
-          height: 6px;
-          background-color: var(--primary-pastel);
-          border-radius: 3px;
+          height: 8px;
+          background-color: #e6edf6;
+          border-radius: 999px;
           overflow: hidden;
+          border: 1px solid var(--border-light);
         }
 
         .progress-fill {
           height: 100%;
-          border-radius: 3px;
+          border-radius: 999px;
         }
 
         .card-action {

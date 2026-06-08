@@ -1064,8 +1064,9 @@ function ProjectDetailContent() {
           padding: 16px 24px;
           background: var(--surface);
           border-radius: var(--radius-lg);
-          border: 1px solid var(--border-light);
+          border: 1px solid var(--border);
           align-items: center;
+          box-shadow: var(--shadow-sm);
         }
 
         .storage-warning {
@@ -1086,7 +1087,7 @@ function ProjectDetailContent() {
           gap: 8px;
           font-size: 14px;
           color: var(--text-sub);
-          font-weight: 600;
+          font-weight: 800;
         }
 
         .info-badge {
@@ -1134,6 +1135,11 @@ function ProjectDetailContent() {
           gap: 0;
           min-width: 0;
           margin-top: 22px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
+          background: #ffffff;
+          box-shadow: var(--shadow-md);
+          overflow: hidden;
         }
 
         .project-browser-tabs {
@@ -1146,9 +1152,9 @@ function ProjectDetailContent() {
           gap: 14px;
           min-width: 0;
           padding: 0 0 0 18px;
-          border-bottom: 1px solid var(--border-light);
+          border-bottom: 1px solid var(--border);
           border-radius: 0;
-          background: color-mix(in srgb, var(--background) 96%, transparent);
+          background: #f7faff;
           box-shadow: none;
         }
 
@@ -1159,7 +1165,7 @@ function ProjectDetailContent() {
           right: 0;
           bottom: -1px;
           height: 1px;
-          background: var(--border-light);
+          background: var(--border);
         }
 
         .project-tab-body {
@@ -1168,7 +1174,7 @@ function ProjectDetailContent() {
           gap: 14px;
           min-width: 0;
           padding: 16px 0 0;
-          background: transparent;
+          background: #ffffff;
         }
 
         .workspace-panel-heading {
@@ -1206,7 +1212,7 @@ function ProjectDetailContent() {
           border: 1px solid transparent;
           border-bottom: none;
           border-radius: 12px 12px 0 0;
-          background: color-mix(in srgb, var(--surface-hover) 78%, transparent);
+          background: #eef3f9;
           color: var(--text-sub);
           display: grid;
           grid-template-columns: auto 1fr;
@@ -1243,8 +1249,8 @@ function ProjectDetailContent() {
           min-height: 78px;
           background: var(--surface);
           color: var(--primary);
-          border-color: var(--border-light);
-          box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+          border-color: var(--border);
+          box-shadow: 0 -6px 18px rgba(26, 43, 64, 0.12);
           transform: translateY(1px);
         }
 

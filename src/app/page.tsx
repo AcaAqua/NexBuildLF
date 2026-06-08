@@ -196,8 +196,9 @@ export default function Home() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 12px;
+          padding: 14px;
           border-radius: var(--radius-lg);
+          border: 1px solid var(--border);
         }
 
         .header-actions {
@@ -237,11 +238,12 @@ export default function Home() {
         .stat-pill {
           background: var(--primary-pastel);
           color: var(--primary);
-          padding: 8px 16px;
+          padding: 9px 16px;
           border-radius: 99px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 900;
           white-space: nowrap;
+          border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
         }
 
         .stat-pill.warning {
@@ -291,7 +293,9 @@ export default function Home() {
           position: relative;
           border-radius: var(--radius-lg);
           background: #ffffff;
-          box-shadow: 0 16px 42px rgba(0, 71, 160, 0.1);
+          border: 1px solid var(--border);
+          box-shadow: 0 18px 40px rgba(26, 43, 64, 0.12);
+          overflow: hidden;
         }
 
         .project-card-actions {
@@ -312,14 +316,14 @@ export default function Home() {
           box-sizing: border-box;
           padding: 0;
           border-radius: 10px;
-          border: 1px solid var(--border-light);
+          border: 1px solid var(--border);
           background: #ffffff;
           color: var(--text-main);
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 8px 18px rgba(0, 71, 160, 0.08);
+          box-shadow: 0 8px 18px rgba(26, 43, 64, 0.12);
           transition: all 0.2s;
         }
 
