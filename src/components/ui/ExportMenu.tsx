@@ -4,6 +4,7 @@ import { exportToCSV } from '@/lib/csvUtil';
 interface ExportMenuProps {
   data: any[]; // array of objects to export
   headers: string[]; // CSV header order
+  compact?: boolean;
 }
 
 /**
@@ -11,7 +12,7 @@ interface ExportMenuProps {
  * - 「全データ」または「選択データ」のエクスポートを選択できる UI（簡易ドロップダウン）
  * - ここでは選択データ機能はプレースホルダーとして実装し、全データエクスポートを実行
  */
-export const ExportMenu: React.FC<ExportMenuProps> = ({ data, headers }) => {
+export const ExportMenu: React.FC<ExportMenuProps> = ({ data, headers, compact = false }) => {
   const handleExport = (selectedOnly: boolean) => {
     const csv = exportToCSV(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -27,12 +28,13 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({ data, headers }) => {
   return (
     <div className="export-menu">
       <button
-        className="btn btn-outline icon-btn-responsive"
+        className={`btn btn-outline icon-btn-responsive ${compact ? 'icon-only' : ''}`}
         onClick={() => handleExport(false)}
         title="全データをCSVでエクスポート"
+        aria-label="全データをCSVでエクスポート"
       >
         <Download size={18} />
-        <span className="btn-text">ダウンロード</span>
+        {!compact && <span className="btn-text">ダウンロード</span>}
       </button>
       {/* 将来的に選択データエクスポートを実装 */}
     </div>
