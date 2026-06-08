@@ -88,7 +88,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
           border-radius: var(--radius-lg);
           border: 1px solid transparent;
           padding: 24px 28px;
-          padding-right: 150px;
+          padding-right: 204px;
           min-height: 152px;
           display: flex;
           align-items: center;

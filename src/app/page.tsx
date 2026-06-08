@@ -5,12 +5,13 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProjectCard from "@/components/features/ProjectCard";
 import Modal from "@/components/ui/Modal";
 import { motion } from "framer-motion";
-import { LayoutGrid, Plus, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { LayoutGrid, Plus, Archive, ArchiveRestore, Trash2, Share2 } from "lucide-react";
 import { storage, Project } from "@/lib/storage";
 import Link from 'next/link';
 import { IconButton } from "@/components/ui/IconButton";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import { shareProject } from "@/lib/projectShare";
 
 export default function Home() {
 // ... existing state and logic ...
@@ -21,6 +22,7 @@ export default function Home() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [shareMessage, setShareMessage] = useState('');
   useEffect(() => {
     storage.seed();
     setProjects(storage.getProjects());
@@ -62,6 +64,17 @@ export default function Home() {
       storage.saveProject({ ...project, isArchived: true });
       setProjects(storage.getProjects());
     }
+  };
+
+  const handleShare = async (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const result = await shareProject(project);
+    setShareMessage(
+      result === 'shared'
+        ? '案件の共有を開始しました。'
+        : '案件の共有ファイルを保存しました。メール・LINEなどへ添付できます。'
+    );
   };
 
   const filtered = projects.filter(p => !p.isArchived &&
@@ -138,6 +151,12 @@ export default function Home() {
           <div className="stat-pill success">完了: {projects.filter(p => p.status === 'completed').length}</div>
         </section>
 
+        {shareMessage && (
+          <div className="dashboard-notice" role="status">
+            {shareMessage}
+          </div>
+        )}
+
         <section className="projects-grid">
           {displayProjects.length === 0 ? (
             <div className="empty-state glass">
@@ -152,6 +171,14 @@ export default function Home() {
                   transition={{ delay: index * 0.05 }}
                 >
                 <div className="project-card-actions">
+                  <button
+                    className="project-action-btn share"
+                    onClick={(e) => handleShare(project, e)}
+                    title="この案件だけ共有"
+                    aria-label="この案件だけ共有"
+                  >
+                    <Share2 size={16} />
+                  </button>
                   <Link 
                     href={`/meeting?projectId=${project.id}`}
                     title="打ち合わせモード (全画面)"
@@ -257,6 +284,16 @@ export default function Home() {
           border-color: #b7eb8f;
         }
 
+        .dashboard-notice {
+          padding: 12px 14px;
+          border-radius: var(--radius-md);
+          border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+          background: var(--primary-pastel);
+          color: var(--primary);
+          font-size: 13px;
+          font-weight: 900;
+        }
+
         .project-form {
           display: flex;
           flex-direction: column;
@@ -337,6 +374,12 @@ export default function Home() {
           color: var(--primary);
           border-color: var(--primary);
           background: #f7fbff;
+        }
+
+        .project-action-btn.share {
+          color: #ffffff;
+          border-color: var(--primary);
+          background: var(--primary);
         }
 
         .delete-btn:last-child {

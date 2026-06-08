@@ -4,13 +4,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
-import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2 } from "lucide-react";
 import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
 import { estimateDataUrlBytes, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
+import { shareProject } from "@/lib/projectShare";
 import { Suspense } from 'react';
 
 const taskStatusLabels: Record<Task['status'], string> = {
@@ -129,6 +130,17 @@ function ProjectDetailContent() {
     } catch (error) {
       setStorageMessage(getStorageWriteErrorMessage(error, '案件情報を保存'));
     }
+  };
+
+  const handleShareProject = async () => {
+    if (!project) return;
+    setStorageMessage('');
+    const result = await shareProject(project);
+    setStorageMessage(
+      result === 'shared'
+        ? 'この案件の共有を開始しました。相手は設定画面の共有データ取り込みから読み込めます。'
+        : 'この案件の共有ファイルを保存しました。メール・LINEなどへ添付できます。'
+    );
   };
 
   // フィルター・ソート済みのタスクを取得
@@ -423,6 +435,7 @@ function ProjectDetailContent() {
             </div>
           </div>
           <div className="header-right">
+            <IconButton icon={<Share2 size={22} />} className="btn-primary share-project-btn" onClick={handleShareProject} title="この案件だけ共有" />
             <IconButton icon={<MoreHorizontal size={24} />} className="btn-outline" onClick={() => setIsEditProjectOpen(true)} title="案件情報を編集" />
           </div>
         </header>
@@ -994,6 +1007,19 @@ function ProjectDetailContent() {
           align-items: center;
           justify-content: space-between;
           margin-bottom: 8px;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .share-project-btn {
+          width: 48px;
+          min-width: 48px;
+          height: 48px;
+          padding: 0;
         }
 
         .header-left {
