@@ -118,14 +118,14 @@ export default function PartnersPage() {
 
   return (
     <MainLayout>
-      <div className="partners-page">
-        <header className="page-header">
+      <div className="partners-page app-page">
+        <header className="page-header compact-page-header">
           <div className="header-text">
             <div className="title-row">
-              <Users size={28} className="header-icon" />
-              <h1>協力業者マスター</h1>
+              <Users size={20} className="header-icon" />
+              <h1>協力業者</h1>
             </div>
-            <p>担当業者や職人さんの連絡先を一元管理します</p>
+            <p>{filteredPartners.length}件を表示中</p>
           </div>
           <div className="header-actions">
             <button className="btn btn-outline icon-btn-responsive" onClick={handleExportCSV} title="CSV出力">
@@ -144,29 +144,29 @@ export default function PartnersPage() {
           </div>
         </header>
 
-        <div className="filter-bar glass">
+        <div className="partner-filter page-toolbar">
           <div className="filter-group">
-            <label>業種で絞り込み:</label>
+            <label>業種</label>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="all">すべて</option>
               {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="filter-group">
-            <label>所属会社で絞り込み:</label>
+            <label>会社</label>
             <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
               <option value="all">すべて</option>
               {uniqueCompanies.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           {(typeFilter !== 'all' || companyFilter !== 'all') && (
-            <button className="btn-clear" onClick={() => { setTypeFilter('all'); setCompanyFilter('all'); }}>
+            <button className="btn btn-outline btn-clear" onClick={() => { setTypeFilter('all'); setCompanyFilter('all'); }}>
               解除
             </button>
           )}
         </div>
 
-        <section className="partners-grid">
+        <section className="partners-grid entity-grid auto">
           {filteredPartners.length === 0 ? (
             <div className="empty-state glass">
               <p>条件に一致する業者がありません。</p>
@@ -249,20 +249,20 @@ export default function PartnersPage() {
         .partners-page {
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 18px;
         }
 
         .page-header {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
         }
 
         @media (min-width: 640px) {
           .page-header {
             flex-direction: row;
             justify-content: space-between;
-            align-items: flex-end;
+            align-items: center;
           }
         }
 
@@ -270,7 +270,7 @@ export default function PartnersPage() {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-bottom: 8px;
+          margin-bottom: 2px;
         }
 
         .header-icon {
@@ -278,14 +278,15 @@ export default function PartnersPage() {
         }
 
         .header-text h1 {
-          font-size: 24px;
-          font-weight: 800;
+          font-size: 16px;
+          font-weight: 900;
           color: var(--text-main);
         }
 
         .header-text p {
           color: var(--text-sub);
-          font-size: 14px;
+          font-size: 12px;
+          font-weight: 800;
         }
 
         .header-actions {
@@ -297,7 +298,7 @@ export default function PartnersPage() {
         .partners-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
         }
 
         @media (min-width: 768px) {
@@ -309,7 +310,8 @@ export default function PartnersPage() {
         .partner-card {
           padding: 20px;
           border-radius: var(--radius-lg);
-          border: 1px solid var(--border-light);
+          border: 1px solid var(--border);
+          background: #ffffff;
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -318,7 +320,7 @@ export default function PartnersPage() {
 
         .partner-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+          box-shadow: var(--shadow-md);
         }
 
         .card-header {
@@ -329,11 +331,12 @@ export default function PartnersPage() {
 
         .type-badge {
           background: var(--surface-hover);
-          color: var(--text-sub);
+          color: var(--primary);
           padding: 4px 10px;
-          border-radius: var(--radius-full);
+          border-radius: 999px;
           font-size: 12px;
-          font-weight: 700;
+          font-weight: 900;
+          border: 1px solid var(--border);
         }
 
         .card-actions {
@@ -384,8 +387,9 @@ export default function PartnersPage() {
           text-decoration: none;
           padding: 8px;
           background: var(--primary-pastel);
-          border-radius: 6px;
-          font-weight: 600;
+          border-radius: var(--radius-sm);
+          font-weight: 900;
+          border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
           transition: opacity 0.2s;
         }
 
@@ -399,8 +403,36 @@ export default function PartnersPage() {
           padding: 12px;
           background: var(--surface);
           border-radius: 6px;
-          border-left: 3px solid var(--border);
+          border-left: 3px solid var(--primary);
           white-space: pre-wrap;
+        }
+
+        .partner-filter {
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .partner-filter .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .partner-filter label {
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .partner-filter select {
+          min-height: 44px;
+          padding: 8px 12px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border);
+          background: #ffffff;
+          color: var(--text-main);
+          font-size: 14px;
+          font-weight: 800;
         }
 
         .partner-form {

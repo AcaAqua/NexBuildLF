@@ -14,8 +14,16 @@ export default function SchedulePage() {
 
   return (
     <MainLayout>
-      <div className="schedule-page">
-        <div className="projects-grid">
+      <div className="schedule-page app-page">
+        <section className="compact-page-header">
+          <div>
+            <div className="compact-title">予定ボード</div>
+            <div className="compact-subtitle">全現場の進行状況を横断確認</div>
+          </div>
+          <strong className="project-count">{projects.length}件</strong>
+        </section>
+
+        <div className="projects-grid entity-grid">
           {projects.length === 0 ? (
             <div className="empty-state">
               案件が登録されていません。
@@ -32,13 +40,24 @@ export default function SchedulePage() {
         .schedule-page {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 18px;
         }
 
         .projects-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
+        }
+
+        .project-count {
+          min-height: 34px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          font-size: 13px;
         }
 
       `}</style>
