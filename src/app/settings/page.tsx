@@ -7,6 +7,8 @@ import { useTheme } from "next-themes";
 import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
 
+type SettingsTab = 'display' | 'profile' | 'data' | 'field';
+
 interface BackupData {
   app?: string;
   version?: number;
@@ -105,6 +107,7 @@ export default function SettingsPage() {
   const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>('display');
 
   useEffect(() => {
     setSettings(storage.getSettings());
@@ -266,13 +269,52 @@ export default function SettingsPage() {
   return (
     <MainLayout>
       <div className="settings-page">
-        <header className="page-header">
-          <Settings size={28} className="header-icon" />
-          <h1>設定・プロファイル</h1>
-        </header>
+        <nav className="settings-tabs glass" role="tablist" aria-label="設定カテゴリ">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'display'}
+            className={`settings-tab ${activeTab === 'display' ? 'active' : ''}`}
+            onClick={() => setActiveTab('display')}
+          >
+            <Monitor size={18} />
+            <span>表示</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'profile'}
+            className={`settings-tab ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <Settings size={18} />
+            <span>プロファイル</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'data'}
+            className={`settings-tab ${activeTab === 'data' ? 'active' : ''}`}
+            onClick={() => setActiveTab('data')}
+          >
+            <HardDrive size={18} />
+            <span>データ</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'field'}
+            className={`settings-tab ${activeTab === 'field' ? 'active' : ''}`}
+            onClick={() => setActiveTab('field')}
+          >
+            <Smartphone size={18} />
+            <span>現場確認</span>
+          </button>
+        </nav>
 
         <div className="settings-grid">
           {/* 表示・テーマ設定 */}
+          {activeTab === 'display' && (
           <section className="settings-card glass">
             <h2>表示・テーマ設定</h2>
             <p className="description">アプリの見た目（ライトモード・ダークモード）を変更します。</p>
@@ -339,8 +381,10 @@ export default function SettingsPage() {
               </button>
             </div>
           </section>
+          )}
 
           {/* プロファイル設定 */}
+          {activeTab === 'profile' && (
           <section className="settings-card glass">
             <h2>担当者プロファイル</h2>
             <p className="description">帳票の出力や共有時に使用されるあなたの情報です。</p>
@@ -384,8 +428,11 @@ export default function SettingsPage() {
               </div>
             </form>
           </section>
+          )}
 
           {/* バックアップ管理 */}
+          {activeTab === 'data' && (
+          <>
           <section className="settings-card glass">
             <h2>データ管理・バックアップ</h2>
             <p className="description">現在の大切な工程データをPCやスマホに保存、または復元します。</p>
@@ -450,6 +497,18 @@ export default function SettingsPage() {
             )}
           </section>
 
+          <section className="settings-card danger glass">
+            <h2>初期化</h2>
+            <p className="description">アプリをインストール直後の状態（デモデータのみ）に戻します。</p>
+            <button className="btn-danger" onClick={handleReset}>
+              <AlertTriangle size={18} /> 全データをリセットする
+            </button>
+          </section>
+          </>
+          )}
+
+          {activeTab === 'field' && (
+          <>
           <section className="settings-card glass field-check-card">
             <div className="field-check-header">
               <div>
@@ -523,46 +582,60 @@ export default function SettingsPage() {
               ))}
             </div>
           </section>
-
-          {/* 危険な操作 */}
-          <section className="settings-card danger glass">
-            <h2>初期化</h2>
-            <p className="description">アプリをインストール直後の状態（デモデータのみ）に戻します。</p>
-            <button className="btn-danger" onClick={handleReset}>
-              <AlertTriangle size={18} /> 全データをリセットする
-            </button>
-          </section>
+          </>
+          )}
         </div>
       </div>
 
       <style jsx>{`
         .settings-page {
-          padding: 24px 20px;
-          max-width: 800px;
+          padding: 0;
+          max-width: 920px;
           margin: 0 auto;
         }
 
-        .page-header {
-          display: flex;
+        .settings-tabs {
+          position: sticky;
+          top: 0;
+          z-index: 8;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 6px;
+          padding: 8px;
+          border-radius: var(--radius-lg);
+          margin-bottom: 14px;
+        }
+
+        .settings-tab {
+          min-height: 54px;
+          border: none;
+          border-radius: var(--radius-md);
+          background: transparent;
+          color: var(--text-sub);
+          display: inline-flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 24px;
+          justify-content: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, box-shadow 0.2s;
         }
 
-        .header-icon {
-          color: var(--primary);
+        .settings-tab.active {
+          background: var(--primary);
+          color: var(--text-on-primary);
+          box-shadow: var(--shadow-sm);
         }
 
-        .page-header h1 {
-          font-size: 24px;
-          font-weight: 800;
-          color: var(--text-main);
+        .settings-tab svg {
+          flex-shrink: 0;
         }
 
         .settings-grid {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 14px;
         }
 
         .settings-card {
@@ -1046,7 +1119,22 @@ export default function SettingsPage() {
 
         @media (max-width: 640px) {
           .settings-page {
-            padding: 16px 12px;
+            padding: 0;
+          }
+
+          .settings-tabs {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 4px;
+            padding: 6px;
+            margin-left: -4px;
+            margin-right: -4px;
+          }
+
+          .settings-tab {
+            min-height: 52px;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 10px;
           }
 
           .settings-card {
