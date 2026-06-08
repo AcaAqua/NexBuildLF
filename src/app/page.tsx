@@ -5,7 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProjectCard from "@/components/features/ProjectCard";
 import Modal from "@/components/ui/Modal";
 import { motion } from "framer-motion";
-import { LayoutGrid, ListFilter, Plus, Archive, ArchiveRestore, Trash2, MapPin, Calendar } from "lucide-react";
+import { LayoutGrid, Plus, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { storage, Project } from "@/lib/storage";
 import Link from 'next/link';
 import { IconButton } from "@/components/ui/IconButton";
@@ -74,23 +74,28 @@ export default function Home() {
   return (
     <MainLayout>
       <div className="dashboard-container">
-        <header className="dashboard-header">
-          <div className="header-text">
-            <h1>ダッシュボード</h1>
-            <p>現在の進行状況と主要な現場を確認できます</p>
-          </div>
+        <header className="dashboard-toolbar glass" aria-label="現場一覧操作">
+          <FilterBar
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            companyFilter={companyFilter}
+            setCompanyFilter={setCompanyFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+          />
           <div className="header-actions">
             <IconButton
               onClick={() => setIsModalOpen(true)}
               icon={<Plus size={20} />}
-              className="btn-primary add-btn"
+              className="btn-primary add-btn icon-only-action"
               aria-label="新規現場を追加"
+              title="新規現場を追加"
             >
-              新規現場
             </IconButton>
             <ExportMenu 
               data={displayProjects} 
               headers={['id', 'title', 'type', 'status', 'location', 'progress', 'updatedAt', 'memo']} 
+              compact
             />
           </div>
         </header>
@@ -127,20 +132,11 @@ export default function Home() {
           </Modal>
         )}
 
-        <FilterBar
-          typeFilter={typeFilter}
-          setTypeFilter={setTypeFilter}
-          companyFilter={companyFilter}
-          setCompanyFilter={setCompanyFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
         <section className="stats-row">
           <div className="stat-pill">進行中: {projects.filter(p => p.status === 'in_progress').length}</div>
           <div className="stat-pill warning">遅延: {projects.filter(p => p.status === 'delayed').length}</div>
           <div className="stat-pill success">完了: {projects.filter(p => p.status === 'completed').length}</div>
         </section>
-        <ExportMenu data={projects} headers={['id','title','type','status','location','progress','updatedAt','memo']} />
 
         <section className="projects-grid">
           {displayProjects.length === 0 ? (
@@ -149,13 +145,12 @@ export default function Home() {
             </div>
           ) : (
             displayProjects.map((project, index) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="project-card-shell"
-              >
+              <div key={project.id} className="project-card-shell">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
                 <div className="project-card-actions">
                   <Link 
                     href={`/meeting?projectId=${project.id}`}
@@ -182,7 +177,8 @@ export default function Home() {
                   </button>
                 </div>
                 <ProjectCard {...project} />
-              </motion.div>
+                </motion.div>
+              </div>
             ))
           )}
         </section>
@@ -192,45 +188,38 @@ export default function Home() {
         .dashboard-container {
           display: flex;
           flex-direction: column;
-          gap: 32px;
-        }
-
-        .dashboard-header {
-          display: flex;
-          flex-direction: column;
           gap: 16px;
         }
 
-        @media (min-width: 640px) {
-          .dashboard-header {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: flex-end;
-          }
-        }
-
-        h1 {
-          font-size: 32px;
-          font-weight: 800;
-          letter-spacing: -0.8px;
-          margin-bottom: 8px;
-          color: var(--text-main);
-        }
-
-        .header-text p {
-          color: var(--text-sub);
-          font-size: 15px;
+        .dashboard-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px;
+          border-radius: var(--radius-lg);
         }
 
         .header-actions {
           display: flex;
-          gap: 12px;
+          gap: 8px;
           align-items: center;
+          flex: 0 0 auto;
         }
 
-        .add-btn {
+        .icon-only-action,
+        :global(.icon-only) {
+          width: 48px;
+          min-width: 48px;
           height: 48px;
+          padding: 0;
           box-shadow: var(--shadow-md);
+        }
+
+        :global(.filter-bar) {
+          flex: 1 1 auto;
+          min-width: 0;
+          margin: 0;
         }
 
         .stats-row {
@@ -295,7 +284,7 @@ export default function Home() {
         .projects-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
         }
 
         .project-card-shell {
@@ -366,9 +355,24 @@ export default function Home() {
           border: 1px dashed var(--border);
         }
 
-        @media (min-width: 1024px) {
-          .projects-grid {
-            grid-template-columns: repeat(2, 1fr);
+        @media (max-width: 760px) {
+          .dashboard-container {
+            gap: 12px;
+          }
+
+          .dashboard-toolbar {
+            align-items: stretch;
+            padding: 10px;
+          }
+
+          .header-actions {
+            flex-direction: column;
+          }
+
+          .icon-only-action,
+          :global(.icon-only) {
+            width: 48px;
+            height: 48px;
           }
         }
       `}</style>

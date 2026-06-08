@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, Plus, WifiOff } from 'lucide-react';
+import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { storage } from "@/lib/storage";
@@ -107,9 +107,6 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
         {!hideNav && (
           <header className="mobile-header glass">
             <span className="logo-text">工程管理 Pro</span>
-            <button className="icon-btn" aria-label="新規案件を追加">
-              <Plus size={24} />
-            </button>
           </header>
         )}
 
