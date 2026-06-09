@@ -329,7 +329,7 @@ export default function Home() {
         .project-card-shell {
           position: relative;
           border-radius: var(--radius-lg);
-          background: #ffffff;
+          background: var(--surface);
           border: 1px solid var(--border);
           box-shadow: 0 18px 40px rgba(26, 43, 64, 0.12);
           overflow: hidden;
@@ -354,7 +354,7 @@ export default function Home() {
           padding: 0;
           border-radius: 10px;
           border: 1px solid var(--border);
-          background: #ffffff;
+          background: var(--surface);
           color: var(--text-main);
           cursor: pointer;
           display: flex;
@@ -373,7 +373,7 @@ export default function Home() {
         .project-action-btn.meeting {
           color: var(--primary);
           border-color: var(--primary);
-          background: #f7fbff;
+          background: var(--primary-pastel);
         }
 
         .project-action-btn.share {

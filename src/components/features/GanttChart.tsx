@@ -272,6 +272,11 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           onTouchEnd={handleTimelineTouchEnd}
           onTouchCancel={() => { pinchRef.current = null; }}
         >
+          <div className="gantt-field-hint" aria-hidden="true">
+            <span>横スクロール</span>
+            <span>つまんで拡大</span>
+            <span>工程2回タップで編集</span>
+          </div>
           {pendingDragChange && (
             <div className="drag-confirm-banner" role="status" aria-live="polite">
               <div className="drag-confirm-text">
@@ -493,7 +498,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
       <style jsx>{`
         .gantt-wrapper {
           width: 100%;
-          background: #ffffff;
+          background: var(--surface);
           border-radius: 0;
           border: none;
           overflow: hidden;
@@ -507,6 +512,37 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           overflow: hidden;
           width: 100%;
           touch-action: pan-x pan-y;
+          background: var(--surface);
+        }
+
+        .gantt-field-hint {
+          display: none;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 14px;
+          border-bottom: 1px solid var(--border);
+          background: color-mix(in srgb, var(--surface) 86%, var(--primary) 14%);
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .gantt-field-hint::-webkit-scrollbar {
+          display: none;
+        }
+
+        .gantt-field-hint span {
+          flex: 0 0 auto;
+          min-height: 26px;
+          padding: 0 9px;
+          border-radius: 999px;
+          border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+          background: var(--surface);
+          color: var(--text-main);
+          display: inline-flex;
+          align-items: center;
         }
 
         .drag-confirm-banner {
@@ -578,7 +614,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           width: var(--gantt-sidebar-width);
           min-width: var(--gantt-sidebar-width);
           padding: 12px 16px;
-          background: #fbfdff;
+          background: color-mix(in srgb, var(--surface) 94%, var(--primary) 6%);
           z-index: 30;
           display: flex;
           align-items: center;
@@ -592,7 +628,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           font-weight: 800;
           font-size: 12px;
           color: var(--text-main);
-          background: #f0f5fb;
+          background: color-mix(in srgb, var(--surface) 88%, var(--primary) 12%);
           justify-content: space-between;
           height: 60px;
           position: sticky;
@@ -676,7 +712,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           align-items: center;
           justify-content: center;
           border-right: 1px solid var(--gantt-grid-line);
-          background: #fbfdff;
+          background: color-mix(in srgb, var(--surface) 96%, var(--primary) 4%);
           cursor: pointer;
           position: relative;
           transition: all 0.2s;
@@ -1008,6 +1044,10 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           .drag-confirm-banner {
             align-items: stretch;
             flex-direction: column;
+          }
+
+          .gantt-field-hint {
+            display: flex;
           }
 
           .drag-confirm-actions {

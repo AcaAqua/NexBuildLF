@@ -22,6 +22,7 @@ export default function RootLayout({
         <meta name="description" content="現場向けの工程表・工程記録管理アプリ" />
         <meta name="application-name" content="工程管理 Pro" />
         <meta name="theme-color" content="#0071e3" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="工程管理" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

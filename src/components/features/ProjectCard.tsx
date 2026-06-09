@@ -84,7 +84,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
 
       <style jsx>{`
         .project-card-container {
-          background: #ffffff;
+          background: var(--surface);
           border-radius: var(--radius-lg);
           border: 1px solid transparent;
           padding: 24px 28px;
@@ -100,7 +100,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
 
         .project-card-container:hover {
           border-color: var(--primary);
-          background: #fbfdff;
+          background: color-mix(in srgb, var(--surface) 88%, var(--primary) 12%);
         }
 
         .card-content {
@@ -185,7 +185,7 @@ export default function ProjectCard({ id, title, type, status, location, progres
 
         .progress-track {
           height: 8px;
-          background-color: #e6edf6;
+          background-color: var(--surface-hover);
           border-radius: 999px;
           overflow: hidden;
           border: 1px solid var(--border-light);

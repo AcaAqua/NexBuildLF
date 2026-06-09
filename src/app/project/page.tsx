@@ -1163,7 +1163,7 @@ function ProjectDetailContent() {
           margin-top: 22px;
           border: 1px solid var(--border);
           border-radius: var(--radius-lg);
-          background: #ffffff;
+          background: var(--surface);
           box-shadow: var(--shadow-md);
           overflow: hidden;
         }
@@ -1180,7 +1180,7 @@ function ProjectDetailContent() {
           padding: 0 0 0 18px;
           border-bottom: 1px solid var(--border);
           border-radius: 0;
-          background: #f7faff;
+          background: color-mix(in srgb, var(--surface) 88%, var(--primary) 12%);
           box-shadow: none;
         }
 
@@ -1200,7 +1200,7 @@ function ProjectDetailContent() {
           gap: 14px;
           min-width: 0;
           padding: 16px 0 0;
-          background: #ffffff;
+          background: var(--surface);
         }
 
         .workspace-panel-heading {
@@ -1238,7 +1238,7 @@ function ProjectDetailContent() {
           border: 1px solid transparent;
           border-bottom: none;
           border-radius: 12px 12px 0 0;
-          background: #eef3f9;
+          background: color-mix(in srgb, var(--surface) 84%, var(--primary) 16%);
           color: var(--text-sub);
           display: grid;
           grid-template-columns: auto 1fr;
@@ -2484,6 +2484,42 @@ function ProjectDetailContent() {
         @media (max-width: 760px) {
           .project-detail {
             padding-bottom: calc(20px + var(--navbar-height) + env(safe-area-inset-bottom));
+            gap: 18px;
+          }
+
+          .detail-header {
+            align-items: flex-start;
+            gap: 10px;
+          }
+
+          .header-left {
+            min-width: 0;
+            gap: 12px;
+            align-items: flex-start;
+          }
+
+          .header-right {
+            flex: 0 0 auto;
+            gap: 6px;
+          }
+
+          .header-right :global(.btn) {
+            width: 46px;
+            min-width: 46px;
+            height: 44px;
+            padding: 0;
+          }
+
+          h1 {
+            font-size: 25px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+          }
+
+          .meta-info {
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: var(--radius-lg);
           }
 
           .project-browser-tabs {
