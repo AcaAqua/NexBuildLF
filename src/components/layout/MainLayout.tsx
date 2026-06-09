@@ -21,6 +21,8 @@ const navItems = [
   { icon: Info, label: 'このアプリについて', href: '/about' },
 ];
 
+const mobileNavItems = navItems.filter((item) => item.href !== '/about');
+
 
 export default function MainLayout({ children, hideNav = false }: MainLayoutProps) {
   const pathname = usePathname();
@@ -138,9 +140,9 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
       {/* Bottom Navigation for Mobile */}
       {!hideNav && (
         <nav className="bottom-nav glass">
-          {navItems.map((item) => (
+          {mobileNavItems.map((item) => (
             <Link key={item.href} href={item.href} className="bottom-nav-item">
-              <div className={`icon-wrapper ${pathname === item.href ? 'active' : ''}`}>
+              <div className={`icon-wrapper ${isNavActive(item.href) ? 'active' : ''}`}>
                 <item.icon size={24} />
                 <span className="label">{item.label}</span>
               </div>
