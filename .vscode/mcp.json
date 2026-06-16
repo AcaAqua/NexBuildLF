@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "kouteikanri-debug": {
+      "command": "node",
+      "args": [
+        "scripts/kouteikanri-debug-mcp.mjs"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
