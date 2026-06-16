@@ -33,6 +33,7 @@ test-results/
 # vscode
 .vscode/*
 !.vscode/settings.json
+!.vscode/mcp.json
 android/.idea/
 
 # OS files

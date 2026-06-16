@@ -7,7 +7,8 @@
     "build": "npm run typecheck && npm run lint && next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mcp:debug": "node scripts/kouteikanri-debug-mcp.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -25,6 +26,7 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
