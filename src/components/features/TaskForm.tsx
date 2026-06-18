@@ -5,7 +5,9 @@ import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/stora
 import { addDays, parseISO, format } from 'date-fns';
 import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
-import { estimateDataUrlBytes, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
+import { FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
+import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from '@/lib/attachmentStore';
+import { StoredImage } from '@/components/ui/StoredImage';
 
 interface TaskFormProps {
   initialData?: Partial<Task>;
@@ -39,7 +41,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   });
   const [photoMessage, setPhotoMessage] = useState('');
   const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
-  const photoBytes = photos.reduce((total, item) => total + estimateDataUrlBytes(item.dataUrl), 0);
+  const photoBytes = photos.reduce((total, item) => total + getAttachmentByteSize(item), 0);
   
   const [partners, setPartners] = useState<Partner[]>([]);
 
@@ -107,13 +109,16 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
     try {
       setIsPhotoProcessing(true);
       const now = new Date().toISOString();
-      const resizedPhotos = await Promise.all(selectedFiles.map(async (file, index) => ({
-        id: `task-photo-${Date.now()}-${index}`,
-        fileName: file.name || `現場写真-${index + 1}.jpg`,
-        fileType: 'image/jpeg',
-        dataUrl: await resizeImageFile(file),
-        createdAt: now,
-      })));
+      const resizedPhotos = await Promise.all(selectedFiles.map(async (file, index) => {
+        const attachment = {
+          id: `task-photo-${Date.now()}-${index}`,
+          fileName: file.name || `現場写真-${index + 1}.jpg`,
+          fileType: 'image/jpeg',
+          dataUrl: await resizeImageFile(file),
+          createdAt: now,
+        };
+        return persistAttachmentDataUrl(attachment);
+      }));
 
       setPhotos(prev => [...prev, ...resizedPhotos]);
     } catch (error) {
@@ -135,7 +140,8 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       setPhotoMessage('写真の処理が終わるまで保存できません。');
       return;
     }
-    const primaryPhoto = photos[0]?.dataUrl || '';
+    const storedPhotos = photos.map(stripAttachmentDataUrl);
+    const primaryPhoto = photos.find(photo => !photo.storageKey)?.dataUrl || '';
     onSubmit({ 
       title, 
       periods, 
@@ -144,7 +150,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       color, 
       memo,
       photo: primaryPhoto,
-      photos: photos.length > 0 ? photos : undefined,
+      photos: storedPhotos.length > 0 ? storedPhotos : undefined,
       id: initialData?.id 
     });
   };
@@ -260,11 +266,11 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
             <div className="photo-grid" aria-label="添付済み写真">
               {photos.map((item, index) => (
                 <div className="photo-preview" key={item.id}>
-                  <img src={item.dataUrl} alt={`添付写真 ${index + 1}`} />
+                  <StoredImage attachment={item} alt={`添付写真 ${index + 1}`} />
                   <div className="photo-meta">
                     <ImageIcon size={14} />
                     <span>{index === 0 ? '代表写真' : `写真 ${index + 1}`}</span>
-                    <strong>{formatDataSize(estimateDataUrlBytes(item.dataUrl))}</strong>
+                    <strong>{formatDataSize(getAttachmentByteSize(item))}</strong>
                   </div>
                   <button type="button" className="btn-remove-photo" onClick={() => handleRemovePhoto(item.id)} aria-label={`添付写真 ${index + 1} を削除`}>
                     <X size={16} />

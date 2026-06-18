@@ -2,6 +2,7 @@
 
 import type { Project, Settings } from './storage';
 import { storage } from './storage';
+import { hydrateProjectAttachments } from './attachmentStore';
 
 type ShareResult = 'shared' | 'downloaded';
 
@@ -42,7 +43,8 @@ function sanitizeFileName(value: string) {
   return clean.slice(0, 40) || 'project';
 }
 
-export function createProjectShareFile(project: Project, settings: Settings = storage.getSettings()) {
+export async function createProjectShareFile(project: Project, settings: Settings = storage.getSettings()) {
+  const hydratedProject = await hydrateProjectAttachments(project);
   const payloadBase = {
     app: 'kouteikanri' as const,
     version: 1,
@@ -53,7 +55,7 @@ export function createProjectShareFile(project: Project, settings: Settings = st
       settings: false as const,
     },
     shareLabel: `案件: ${project.title}`,
-    projects: [project],
+    projects: [hydratedProject],
     partners: [] as [],
     settings: settings || fallbackSettings,
   };
@@ -77,7 +79,7 @@ export function downloadProjectShareFile(file: File) {
 }
 
 export async function shareProject(project: Project): Promise<ShareResult> {
-  const file = createProjectShareFile(project);
+  const file = await createProjectShareFile(project);
   const text = `${project.title} の工程管理データです。設定画面の共有データ取り込みから読み込めます。`;
 
   try {

@@ -41,6 +41,15 @@ npm run dev
 npm run build
 ```
 
+## Android APK Download
+
+テスト用APKはGitHub Releaseから直接ダウンロードできます。
+
+- 最新debug APK: [kouteikanri-debug.apk](https://github.com/AcaAqua/NexBuildLF/releases/download/debug-latest/kouteikanri-debug.apk)
+- Releaseページ: [debug-latest](https://github.com/AcaAqua/NexBuildLF/releases/tag/debug-latest)
+
+`main` へ反映されるたびに GitHub Actions がAPKを再ビルドし、同じURLのファイルを更新します。
+
 ## Deployment
 
 NexBuildLF is deployed on Netlify as a root-level Next.js application.

@@ -23,6 +23,127 @@
 
 ## Detailed Progress (詳細な進捗)
 
+### 2026-06-17 23:08: 工程表軽量化と保存診断の追加
+
+#### 目的
+テスト版で工程表表示が重く感じる問題に対し、DB構造変更を伴わない範囲で描画負荷と初期表示負荷を下げる。
+
+#### 変更内容
+- 工程表の行ごとの日付グリッドDOMを削除し、CSS背景で土日・今日・縦罫線を描画するように変更。
+- 案件内タブで非表示の工程表・工程一覧・工程記録をDOMから外し、表示中タブだけ描画するように変更。
+- 全案件の保存JSON容量、工程数、記録数、写真数を確認できる保存診断チップを案件画面に追加。
+- スクロール同期対象からアンマウント済み要素を除外し、タブ切替後の不要な同期処理を抑制。
+
+#### 変更ファイル
+- `src/components/features/GanttChart.tsx`
+- `src/app/project/page.tsx`
+- `src/lib/storage.ts`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+
+#### 残課題
+- 写真をbase64で案件JSON内に保持しているため、写真が増えると保存・読込が重くなる。次段階でIndexedDB/Androidファイル保存/SQLiteへの分離を検討する。
+- 大量工程データ向けには、表示範囲の仮想化とドラッグ処理のさらなる軽量化が必要。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当コミットまたは作業差分を取り消す。
+
+### 2026-06-17 23:24: 写真添付のIndexedDB分離
+
+#### 目的
+写真をbase64のまま案件JSONに保持すると、localStorageの保存・読込・共有差分確認が重くなるため、写真本体をIndexedDBへ分離する。
+
+#### 変更内容
+- 新規追加する工程写真・工程記録写真をIndexedDBへ保存し、案件JSONには `storageKey` と `byteSize` を保存する方式を追加。
+- 既存のbase64写真もそのまま表示できる後方互換を維持。
+- 写真表示用の `StoredImage` コンポーネントを追加し、base64/IndexedDB参照の両方を表示可能にした。
+- 案件単体共有では、送信前にIndexedDBから写真を復元して、相手端末だけで取り込めるJSONにする。
+
+#### 変更ファイル
+- `src/lib/attachmentStore.ts`
+- `src/components/ui/StoredImage.tsx`
+- `src/components/features/TaskForm.tsx`
+- `src/app/project/page.tsx`
+- `src/lib/projectShare.ts`
+- `src/lib/storage.ts`
+- `src/lib/photoUtils.ts`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+
+#### 残課題
+- 既存端末に残っているbase64写真は自動移行していない。次段階で「保存データ軽量化」ボタンまたは初回起動時の任意移行を追加する。
+- 設定画面の全体バックアップ/復元は、今回のIndexedDB分離と完全統合していない。案件単体共有は復元対応済み。
+- Android APKでのネイティブSQLite/ファイル保存は未実装。現時点ではWeb/Capacitor WebViewのIndexedDBを利用する。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当コミットまたは作業差分を取り消す。
+
+### 2026-06-18 00:15: 既存写真の保存データ軽量化ツール
+
+#### 目的
+既存端末に残っているbase64写真を、ユーザー操作でIndexedDBへ移行できるようにし、案件JSONの肥大化を抑える。
+
+#### 変更内容
+- 設定画面のデータタブに「保存データを軽量化」カードを追加。
+- 未分離写真数、写真容量、保存JSON容量を表示。
+- 既存base64写真をIndexedDBへ保存し、案件JSONには `storageKey` と `byteSize` だけを残す手動軽量化処理を追加。
+- 全体共有/バックアップ作成時はIndexedDB写真を復元して、相手端末だけで取り込めるJSONを生成。
+- 共有データ取り込み時は写真をIndexedDBへ再分離してから端末内へ保存。
+
+#### 変更ファイル
+- `src/app/settings/page.tsx`
+- `src/lib/attachmentStore.ts`
+- `src/lib/storage.ts`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+- `http://127.0.0.1:3025/settings` のデータタブで軽量化カード表示を確認。
+- `http://127.0.0.1:3025/project?id=demo-1` の案件画面表示、タブ、保存容量チップ、旧グリッドDOM削減状態を確認。
+
+#### 残課題
+- Android APKでのネイティブSQLite/ファイル保存は未実装。現時点ではWebView/ブラウザのIndexedDBを利用する。
+- 大量写真を含む実データでの移行時間と端末容量不足時の挙動は実機確認が必要。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当コミットまたは作業差分を取り消す。
+
+### 2026-06-18 11:11: GitHub ReleaseでのAPK直接配布
+
+#### 目的
+GitHub ActionsのArtifacts画面を毎回辿らず、固定URLからdebug APKを直接ダウンロードできるようにする。
+
+#### 変更内容
+- Android debug APK workflowにRelease公開ステップを追加。
+- `debug-latest` Releaseへ `kouteikanri-debug.apk` を上書きアップロードするようにした。
+- READMEにAPKの直接DLリンクとReleaseページリンクを追加。
+
+#### 変更ファイル
+- `.github/workflows/android-debug-apk.yml`
+- `README.md`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- ローカルで `npm run build` 成功。
+- ローカルで `npx cap sync android` 成功。
+- ローカルで `android/gradlew.bat assembleDebug` 成功。
+- APK生成場所: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+#### 残課題
+- GitHub上のRelease更新は、GitHubへpush後にworkflow実行結果を確認する。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当コミットまたは作業差分を取り消す。
+
 ### 2026-04-28: UI Enhancements (完了)
 - [x] `GanttChart.tsx`: Z-indexおよび `position: sticky` 時のレイアウト修正。独立スクロール化。
 - [x] `settings/page.tsx` & `globals.css`: UIスケール（文字・要素サイズ）の変更設定を追加。CSS変数による連動。

@@ -4,14 +4,16 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
-import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2 } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2, Database } from "lucide-react";
 import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
-import { estimateDataUrlBytes, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
+import { FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
 import { shareProject } from "@/lib/projectShare";
+import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from "@/lib/attachmentStore";
+import { StoredImage } from "@/components/ui/StoredImage";
 import { Suspense } from 'react';
 
 const taskStatusLabels: Record<Task['status'], string> = {
@@ -56,7 +58,7 @@ const getTaskPhotoCount = (task: Task) => {
 
 const getAttachmentDataSize = (attachments?: TaskLogAttachment[]) => {
   if (!attachments || attachments.length === 0) return '0KB';
-  const bytes = attachments.reduce((total, attachment) => total + estimateDataUrlBytes(attachment.dataUrl), 0);
+  const bytes = attachments.reduce((total, attachment) => total + getAttachmentByteSize(attachment), 0);
   return formatDataSize(bytes);
 };
 
@@ -210,7 +212,12 @@ function ProjectDetailContent() {
   }, [project]);
 
   const selectedTimelineTask = timelineTaskId ? taskById.get(timelineTaskId) : undefined;
-  const logAttachmentBytes = logAttachments.reduce((total, item) => total + estimateDataUrlBytes(item.dataUrl), 0);
+  const logAttachmentBytes = logAttachments.reduce((total, item) => total + getAttachmentByteSize(item), 0);
+  const storageStats = useMemo(() => {
+    if (!project || typeof window === 'undefined') return null;
+    return storage.getProjectStorageStats();
+  }, [project]);
+  const isStorageHeavy = storageStats ? storageStats.rawJsonBytes > 3 * 1024 * 1024 || storageStats.attachmentBytes > 2 * 1024 * 1024 : false;
 
   const handleOpenAddModal = () => {
     setEditingTask(undefined);
@@ -296,13 +303,16 @@ function ProjectDetailContent() {
     try {
       setIsLogImageProcessing(true);
       const now = new Date().toISOString();
-      const images = await Promise.all(selectedFiles.map(async (file, index) => ({
-        id: `att-${Date.now()}-${index}`,
-        fileName: file.name,
-        fileType: 'image/jpeg',
-        dataUrl: await resizeImageFile(file),
-        createdAt: now,
-      })));
+      const images = await Promise.all(selectedFiles.map(async (file, index) => {
+        const attachment = {
+          id: `att-${Date.now()}-${index}`,
+          fileName: file.name,
+          fileType: 'image/jpeg',
+          dataUrl: await resizeImageFile(file),
+          createdAt: now,
+        };
+        return persistAttachmentDataUrl(attachment);
+      }));
 
       setLogAttachments(prev => [...prev, ...images]);
     } catch (error) {
@@ -334,7 +344,7 @@ function ProjectDetailContent() {
       type: logAttachments.length > 0 ? 'photo' : 'memo',
       title: logTitle.trim() || (logAttachments.length > 0 ? '写真記録' : 'メモ'),
       body: logBody.trim(),
-      attachments: logAttachments.length > 0 ? logAttachments : undefined,
+      attachments: logAttachments.length > 0 ? logAttachments.map(stripAttachmentDataUrl) : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -453,6 +463,15 @@ function ProjectDetailContent() {
             <span className={`status-dot ${project.status}`} />
             <span>{project.status === 'in_progress' ? '進行中' : '調整中'}</span>
           </div>
+          {storageStats && (
+            <div
+              className={`info-badge storage-health ${isStorageHeavy ? 'heavy' : ''}`}
+              title={`全案件 ${storageStats.projectCount}件 / 工程 ${storageStats.taskCount}件 / 記録 ${storageStats.taskLogCount}件 / 写真 ${storageStats.taskPhotoCount + storageStats.logAttachmentCount}件`}
+            >
+              <Database size={16} />
+              <span>保存 {formatDataSize(storageStats.rawJsonBytes)}</span>
+            </div>
+          )}
           {project.memo && (
             <div className="project-memo-wide">
               <FileText size={16} />
@@ -581,21 +600,24 @@ function ProjectDetailContent() {
               </div>
             )}
           
-          <div className={`workspace-pane chart-wrapper gantt-primary ${workspaceTab === 'chart' ? 'active' : ''}`}>
-            <GanttChart
-              tasks={displayTasks}
-              dailyMemos={project.dailyMemos}
-              taskLogs={project.taskLogs}
-              onUpdate={handleSaveTask}
-              onEdit={handleEditTask}
-              onAddTask={handleOpenAddModal}
-              onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
-              onDateClick={handleDateClick}
-              onOpenTaskLog={handleOpenTaskLog}
-            />
-          </div>
+          {workspaceTab === 'chart' && (
+            <div className="workspace-pane chart-wrapper gantt-primary active">
+              <GanttChart
+                tasks={displayTasks}
+                dailyMemos={project.dailyMemos}
+                taskLogs={project.taskLogs}
+                onUpdate={handleSaveTask}
+                onEdit={handleEditTask}
+                onAddTask={handleOpenAddModal}
+                onReorder={(sortBy === 'manual' && statusFilter === 'all' && assigneeFilter === 'all') ? handleReorderTasks : undefined}
+                onDateClick={handleDateClick}
+                onOpenTaskLog={handleOpenTaskLog}
+              />
+            </div>
+          )}
 
-          <div className={`workspace-pane task-list-panel ${workspaceTab === 'tasks' ? 'active' : ''}`}>
+          {workspaceTab === 'tasks' && (
+          <div className="workspace-pane task-list-panel active">
             <div className="task-list-header">
               <span>工程名</span>
               <span>担当者</span>
@@ -671,8 +693,10 @@ function ProjectDetailContent() {
               })
             )}
           </div>
+          )}
 
-          <div className={`workspace-pane task-log-timeline-panel ${workspaceTab === 'timeline' ? 'active' : ''}`}>
+          {workspaceTab === 'timeline' && (
+          <div className="workspace-pane task-log-timeline-panel active">
             <div className="timeline-panel-header">
               <div>
                 <h3>工程記録タイムライン</h3>
@@ -771,10 +795,10 @@ function ProjectDetailContent() {
                                 key={attachment.id}
                                 className="log-attachment-thumb"
                                 onClick={() => setPreviewAttachment(attachment)}
-                                aria-label={`${attachment.fileName} ${formatDataSize(estimateDataUrlBytes(attachment.dataUrl))} を拡大表示`}
+                                aria-label={`${attachment.fileName} ${formatDataSize(getAttachmentByteSize(attachment))} を拡大表示`}
                               >
-                                <img src={attachment.dataUrl} alt={attachment.fileName} />
-                                <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
+                                <StoredImage attachment={attachment} alt={attachment.fileName} />
+                                <span>{formatDataSize(getAttachmentByteSize(attachment))}</span>
                               </button>
                             ))}
                           </div>
@@ -786,6 +810,7 @@ function ProjectDetailContent() {
               </div>
             )}
           </div>
+          )}
           </div>
         </section>
 
@@ -922,10 +947,10 @@ function ProjectDetailContent() {
                             onClick={() => setPreviewAttachment(attachment)}
                             aria-label={`${attachment.fileName} を拡大表示`}
                           >
-                            <img src={attachment.dataUrl} alt={attachment.fileName} />
+                            <StoredImage attachment={attachment} alt={attachment.fileName} />
                           </button>
                           <div className="selected-attachment-meta">
-                            <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
+                            <span>{formatDataSize(getAttachmentByteSize(attachment))}</span>
                           </div>
                           <button
                             type="button"
@@ -966,10 +991,10 @@ function ProjectDetailContent() {
                                 key={attachment.id}
                                 className="log-attachment-thumb"
                                 onClick={() => setPreviewAttachment(attachment)}
-                                aria-label={`${attachment.fileName} ${formatDataSize(estimateDataUrlBytes(attachment.dataUrl))} を拡大表示`}
+                                aria-label={`${attachment.fileName} ${formatDataSize(getAttachmentByteSize(attachment))} を拡大表示`}
                               >
-                                <img src={attachment.dataUrl} alt={attachment.fileName} />
-                                <span>{formatDataSize(estimateDataUrlBytes(attachment.dataUrl))}</span>
+                                <StoredImage attachment={attachment} alt={attachment.fileName} />
+                                <span>{formatDataSize(getAttachmentByteSize(attachment))}</span>
                               </button>
                             ))}
                           </div>
@@ -990,7 +1015,7 @@ function ProjectDetailContent() {
         >
           {previewAttachment && (
             <div className="attachment-preview-modal">
-              <img src={previewAttachment.dataUrl} alt={previewAttachment.fileName} />
+              <StoredImage attachment={previewAttachment} alt={previewAttachment.fileName} />
             </div>
           )}
         </Modal>
@@ -1105,6 +1130,16 @@ function ProjectDetailContent() {
           font-size: 13px;
           font-weight: 900;
           line-height: 1.5;
+        }
+
+        .storage-health {
+          gap: 6px;
+          color: var(--primary);
+        }
+
+        .storage-health.heavy {
+          color: var(--warning);
+          background: var(--warning-pastel);
         }
 
         .info-item {

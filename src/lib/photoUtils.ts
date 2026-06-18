@@ -9,8 +9,8 @@ export function formatDataSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 }
 
-export function estimateDataUrlBytes(dataUrl: string) {
-  const base64 = dataUrl.split(',')[1] || '';
+export function estimateDataUrlBytes(dataUrl?: string) {
+  const base64 = dataUrl?.split(',')[1] || '';
   if (!base64) return 0;
   return Math.floor((base64.length * 3) / 4);
 }

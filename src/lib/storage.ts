@@ -29,7 +29,9 @@ export interface TaskPhotoAttachment {
   id: string;
   fileName: string;
   fileType: string;
-  dataUrl: string;
+  dataUrl?: string;
+  storageKey?: string;
+  byteSize?: number;
   createdAt: string;
 }
 
@@ -39,7 +41,9 @@ export interface TaskLogAttachment {
   id: string;
   fileName: string;
   fileType: string;
-  dataUrl: string;
+  dataUrl?: string;
+  storageKey?: string;
+  byteSize?: number;
   createdAt: string;
 }
 
@@ -89,7 +93,25 @@ export interface Settings {
   uiScale?: 'sm' | 'md' | 'lg'; // 表示サイズ設定
 }
 
+export interface ProjectStorageStats {
+  projectCount: number;
+  taskCount: number;
+  taskLogCount: number;
+  taskPhotoCount: number;
+  logAttachmentCount: number;
+  attachmentBytes: number;
+  rawJsonBytes: number;
+}
+
 const STORAGE_KEY = 'kouteikanri_projects';
+
+const estimateTextBytes = (value: string) => new Blob([value]).size;
+
+const estimateDataUrlBytes = (dataUrl?: string) => {
+  if (!dataUrl) return 0;
+  const base64 = dataUrl.split(',')[1] || '';
+  return Math.floor((base64.length * 3) / 4);
+};
 
 export function isStorageQuotaError(error: unknown) {
   if (!error || typeof error !== 'object') return false;
@@ -139,6 +161,61 @@ export const storage = {
     const projects = storage.getProjects();
     const filtered = projects.filter(p => p.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  },
+
+  replaceProjects: (projects: Project[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  },
+
+  getProjectStorageStats: (): ProjectStorageStats => {
+    if (typeof window === 'undefined') {
+      return {
+        projectCount: 0,
+        taskCount: 0,
+        taskLogCount: 0,
+        taskPhotoCount: 0,
+        logAttachmentCount: 0,
+        attachmentBytes: 0,
+        rawJsonBytes: 0,
+      };
+    }
+
+    const rawJson = localStorage.getItem(STORAGE_KEY) || '';
+    const projects = storage.getProjects();
+
+    return projects.reduce<ProjectStorageStats>((stats, project) => {
+      stats.projectCount += 1;
+      stats.taskCount += project.tasks.length;
+      stats.taskLogCount += project.taskLogs?.length || 0;
+
+      project.tasks.forEach((task) => {
+        if (task.photo) {
+          stats.taskPhotoCount += 1;
+          stats.attachmentBytes += estimateDataUrlBytes(task.photo);
+        }
+        task.photos?.forEach((photo) => {
+          stats.taskPhotoCount += 1;
+          stats.attachmentBytes += photo.byteSize || estimateDataUrlBytes(photo.dataUrl);
+        });
+      });
+
+      project.taskLogs?.forEach((log) => {
+        log.attachments?.forEach((attachment) => {
+          stats.logAttachmentCount += 1;
+          stats.attachmentBytes += attachment.byteSize || estimateDataUrlBytes(attachment.dataUrl);
+        });
+      });
+
+      return stats;
+    }, {
+      projectCount: 0,
+      taskCount: 0,
+      taskLogCount: 0,
+      taskPhotoCount: 0,
+      logAttachmentCount: 0,
+      attachmentBytes: 0,
+      rawJsonBytes: estimateTextBytes(rawJson),
+    });
   },
 
   // 初期シードデータ

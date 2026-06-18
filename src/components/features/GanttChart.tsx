@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, Reorder, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, Plus, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { storage, Task, TaskLog, Period } from '@/lib/storage';
 
@@ -70,6 +70,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [cellWidth, setCellWidth] = React.useState(50);
   const [pendingDragChange, setPendingDragChange] = React.useState<PendingDragChange | null>(null);
+  const prefersReducedMotion = useReducedMotion();
   const clickTimerRef = React.useRef<number | null>(null);
   const lastTapRef = React.useRef<{ taskId: string; time: number } | null>(null);
   const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
@@ -126,6 +127,41 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     return { startDate: start, days: daysArr };
   }, [tasks]);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const timelineWidth = cellWidth * days.length;
+
+  const timelineGridStyle = useMemo(() => {
+    const cellStops = days.flatMap((day, index) => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const dayName = format(day, 'E');
+      const isSat = dayName === 'Sat';
+      const isSun = dayName === 'Sun';
+      const isToday = dateStr === todayStr;
+      const color = isToday
+        ? 'var(--gantt-today-bg)'
+        : isSat
+          ? 'var(--gantt-sat-bg)'
+          : isSun
+            ? 'var(--gantt-sun-bg)'
+            : 'transparent';
+      return [`${color} ${index * cellWidth}px`, `${color} ${(index + 1) * cellWidth}px`];
+    });
+
+    const todayIndex = days.findIndex((day) => format(day, 'yyyy-MM-dd') === todayStr);
+    const todayMarker = todayIndex >= 0
+      ? `linear-gradient(to right, transparent 0 ${todayIndex * cellWidth}px, var(--primary) ${todayIndex * cellWidth}px ${todayIndex * cellWidth + 2}px, transparent ${todayIndex * cellWidth + 2}px ${timelineWidth}px)`
+      : '';
+
+    return {
+      width: `${timelineWidth}px`,
+      minWidth: `${timelineWidth}px`,
+      height: 'var(--gantt-row-height)',
+      backgroundImage: [
+        todayMarker,
+        `repeating-linear-gradient(to right, transparent 0, transparent ${Math.max(1, cellWidth - 1)}px, var(--gantt-grid-line) ${Math.max(1, cellWidth - 1)}px, var(--gantt-grid-line) ${cellWidth}px)`,
+        `linear-gradient(to right, ${cellStops.join(', ')})`,
+      ].filter(Boolean).join(', '),
+    } as React.CSSProperties;
+  }, [cellWidth, days, timelineWidth, todayStr]);
 
   const handleDragEnd = (task: Task, periodIndex: number, offset: number) => {
     const daysMoved = Math.round(offset / cellWidth);
@@ -239,6 +275,10 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     const scrollLeft = event.currentTarget.scrollLeft;
     syncingScrollRef.current = true;
     timelineScrollAreasRef.current.forEach((area) => {
+      if (!area.isConnected) {
+        timelineScrollAreasRef.current.delete(area);
+        return;
+      }
       if (area !== event.currentTarget) area.scrollLeft = scrollLeft;
     });
     window.requestAnimationFrame(() => {
@@ -389,28 +429,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                     >
                       <div
                         className="timeline-grid"
-                        style={{
-                          width: `calc(var(--gantt-cell-width) * ${days.length})`,
-                          minWidth: `calc(var(--gantt-cell-width) * ${days.length})`,
-                          height: 'var(--gantt-row-height)',
-                        }}
+                        style={timelineGridStyle}
                       >
-                        {/* Grid background lines */}
-                        {days.map((day, i) => {
-                          const dateStr = format(day, 'yyyy-MM-dd');
-                          const dayName = format(day, 'E');
-                          const isSat = dayName === 'Sat';
-                          const isSun = dayName === 'Sun';
-                          const isToday = dateStr === todayStr;
-                          return (
-                          <div 
-                            key={`g-${task.id}-${day.getTime()}`} 
-                            className={`grid-line ${isSat ? 'sat' : isSun ? 'sun' : ''} ${isToday ? 'today' : ''}`}
-                            style={{ left: `calc(var(--gantt-cell-width) * ${i})`, top: 0 }}
-                          />
-                          );
-                        })}
-                        
                         {/* Multiple Task Bars (Periods) */}
                         {taskPeriods.map((period, pIdx) => {
                           const sDate = startOfDay(parseISO(period.start));
@@ -464,8 +484,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
                                   overflow: 'visible',
                                 }}
                                 whileDrag={{ 
-                                  scale: 1.05, 
-                                  boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                                  scale: prefersReducedMotion ? 1 : 1.03,
+                                  boxShadow: "0 10px 25px rgba(0,0,0,0.18)",
                                   zIndex: 100
                                 }}
                               >

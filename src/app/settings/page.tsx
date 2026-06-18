@@ -6,6 +6,7 @@ import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Sm
 import { useTheme } from "next-themes";
 import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
+import { analyzeProjectAttachments, hydrateProjectAttachments, persistProjectAttachments, type AttachmentCompactionStats } from "@/lib/attachmentStore";
 
 type SettingsTab = 'display' | 'profile' | 'data' | 'field';
 type ShareMode = 'all' | 'projects' | 'partners';
@@ -152,6 +153,9 @@ export default function SettingsPage() {
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [importMessage, setImportMessage] = useState('');
   const [shareMessage, setShareMessage] = useState('');
+  const [compactMessage, setCompactMessage] = useState('');
+  const [isCompacting, setIsCompacting] = useState(false);
+  const [compactionStats, setCompactionStats] = useState<AttachmentCompactionStats | null>(null);
   const [shareMode, setShareMode] = useState<ShareMode>('all');
   const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
@@ -162,7 +166,13 @@ export default function SettingsPage() {
     setSettings(storage.getSettings());
     setMounted(true);
     refreshFieldChecks();
+    refreshCompactionStats();
   }, []);
+
+  const refreshCompactionStats = () => {
+    if (typeof window === 'undefined') return;
+    setCompactionStats(analyzeProjectAttachments(storage.getProjects()));
+  };
 
   const refreshFieldChecks = async () => {
     if (typeof window === 'undefined') return;
@@ -230,15 +240,18 @@ export default function SettingsPage() {
     }
   };
 
-  const createBackupData = (): BackupData => {
+  const createBackupData = async (): Promise<BackupData> => {
     const mode = SHARE_MODE_META[shareMode];
+    const projects = mode.scope.projects
+      ? await Promise.all(storage.getProjects().map(hydrateProjectAttachments))
+      : [];
     const data: BackupData = {
       app: 'kouteikanri',
       version: 1,
       exportedAt: new Date().toISOString(),
       shareScope: mode.scope,
       shareLabel: mode.label,
-      projects: mode.scope.projects ? storage.getProjects() : [],
+      projects,
       partners: mode.scope.partners ? storage.getPartners() : [],
       settings: mode.scope.settings ? storage.getSettings() : { companyName: '', userName: '', qualifications: '', uiScale: 'md' },
     };
@@ -246,8 +259,8 @@ export default function SettingsPage() {
     return data;
   };
 
-  const createBackupFile = () => {
-    const data = createBackupData();
+  const createBackupFile = async () => {
+    const data = await createBackupData();
     const jsonStr = JSON.stringify(data, null, 2);
     const suffix = shareMode === 'all' ? 'all' : shareMode;
     const fileName = `kouteikanri_share_${suffix}_${new Date().toISOString().split('T')[0]}.json`;
@@ -264,13 +277,13 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = () => {
-    downloadBackupFile(createBackupFile());
+  const handleExport = async () => {
+    downloadBackupFile(await createBackupFile());
   };
 
   const handleShare = async () => {
     setShareMessage('');
-    const file = createBackupFile();
+    const file = await createBackupFile();
 
     try {
       if (navigator.canShare?.({ files: [file] }) && navigator.share) {
@@ -331,12 +344,13 @@ export default function SettingsPage() {
     reader.readAsText(file);
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (!pendingImport) return;
     try {
       const scope = getBackupScope(pendingImport);
       if (scope.projects) {
-        localStorage.setItem('kouteikanri_projects', JSON.stringify(pendingImport.projects));
+        const projects = await Promise.all(pendingImport.projects.map(persistProjectAttachments));
+        storage.replaceProjects(projects);
       }
       if (scope.partners) {
         localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
@@ -344,6 +358,7 @@ export default function SettingsPage() {
       if (scope.settings) {
         storage.saveSettings(pendingImport.settings);
       }
+      refreshCompactionStats();
       setImportMessage(`${getScopeLabel(scope)}を取り込みました。画面を更新します。`);
       window.setTimeout(() => window.location.reload(), 600);
     } catch (error) {
@@ -355,6 +370,37 @@ export default function SettingsPage() {
     setPendingImport(null);
     setImportSummary(null);
     setImportMessage('');
+  };
+
+  const handleCompactStorage = async () => {
+    if (isCompacting) return;
+    setCompactMessage('');
+
+    try {
+      setIsCompacting(true);
+      const currentProjects = storage.getProjects();
+      const before = analyzeProjectAttachments(currentProjects);
+
+      if (before.inlineAttachmentCount === 0) {
+        setCompactMessage('軽量化が必要な写真はありません。');
+        setCompactionStats(before);
+        return;
+      }
+
+      const compactedProjects = await Promise.all(currentProjects.map(persistProjectAttachments));
+      const after = analyzeProjectAttachments(compactedProjects);
+      storage.replaceProjects(compactedProjects);
+      setCompactionStats(after);
+
+      const savedBytes = Math.max(before.jsonBytes - after.jsonBytes, 0);
+      setCompactMessage(
+        `${before.inlineAttachmentCount}枚の写真を端末内ストアへ移しました。保存JSONを約${formatDataSize(savedBytes)}軽量化しました。`,
+      );
+    } catch (error) {
+      setCompactMessage(getStorageWriteErrorMessage(error, '保存データを軽量化'));
+    } finally {
+      setIsCompacting(false);
+    }
   };
 
   const handleReset = () => {
@@ -587,6 +633,39 @@ export default function SettingsPage() {
             </div>
             {shareMessage && <p className="share-message" role="status">{shareMessage}</p>}
             {importMessage && <p className="import-message">{importMessage}</p>}
+            <div className="compact-storage-panel">
+              <div className="compact-storage-main">
+                <div className="action-icon compact"><HardDrive size={20} /></div>
+                <div>
+                  <h3>保存データを軽量化</h3>
+                  <p>既存のbase64写真を端末内ストアへ移し、工程データ本体を軽くします。</p>
+                </div>
+              </div>
+              <dl className="compact-storage-stats">
+                <div>
+                  <dt>JSON容量</dt>
+                  <dd>{formatDataSize(compactionStats?.jsonBytes || 0)}</dd>
+                </div>
+                <div>
+                  <dt>未分離写真</dt>
+                  <dd>{compactionStats?.inlineAttachmentCount || 0}枚</dd>
+                </div>
+                <div>
+                  <dt>写真容量</dt>
+                  <dd>{formatDataSize(compactionStats?.inlineAttachmentBytes || 0)}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                className="btn btn-outline compact-storage-btn"
+                onClick={handleCompactStorage}
+                disabled={isCompacting || (compactionStats?.inlineAttachmentCount || 0) === 0}
+              >
+                <HardDrive size={18} />
+                {isCompacting ? '軽量化中' : '保存データを軽量化'}
+              </button>
+              {compactMessage && <p className="compact-message" role="status">{compactMessage}</p>}
+            </div>
             {importSummary && (
               <div className="import-preview" role="status">
                 <div>
@@ -997,6 +1076,7 @@ export default function SettingsPage() {
         .action-icon.share { background: var(--primary); color: var(--text-on-primary); }
         .action-icon.export { background: #e6f7ff; color: #1890ff; }
         .action-icon.import { background: #f6ffed; color: #52c41a; }
+        .action-icon.compact { background: var(--warning-pastel); color: var(--warning); }
 
         .action-text h3 {
           font-size: 15px;
@@ -1024,6 +1104,86 @@ export default function SettingsPage() {
 
         .import-message {
           color: var(--warning);
+        }
+
+        .compact-storage-panel {
+          margin-top: 14px;
+          padding: 14px;
+          border: 1px solid var(--border-light);
+          border-radius: var(--radius-md);
+          background: var(--surface);
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+        }
+
+        .compact-storage-main {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .compact-storage-main h3 {
+          margin: 0 0 4px;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .compact-storage-main p {
+          margin: 0;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.45;
+        }
+
+        .compact-storage-stats {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin: 0;
+        }
+
+        .compact-storage-stats div {
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          background: var(--surface-hover);
+          border: 1px solid var(--border-light);
+        }
+
+        .compact-storage-stats dt {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .compact-storage-stats dd {
+          margin: 2px 0 0;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .compact-storage-btn {
+          min-width: 190px;
+          font-weight: 900;
+        }
+
+        .compact-storage-btn:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+
+        .compact-message {
+          grid-column: 1 / -1;
+          margin: 0;
+          color: var(--primary);
+          font-size: 13px;
+          font-weight: 900;
         }
 
         .import-preview {
