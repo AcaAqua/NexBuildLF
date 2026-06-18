@@ -23,6 +23,42 @@
 
 ## Detailed Progress (詳細な進捗)
 
+### 2026-06-18 13:16: 配送票・受領票の別ページ印刷
+
+#### 目的
+配送票と受領票は同一画面内で無理に切り替えるより、現場で開いてすぐ印刷・確認できる専用ページに分けた方が操作が明確になるため、案件ごとの帳票導線を追加する。
+
+#### 変更内容
+- 案件画面のヘッダーに、対象案件を引き継いで開く「配送票」「受領票」導線を追加。
+- `/delivery-note` と `/receipt-note` を追加し、A4印刷用のプレビューと入力フォームを別ページ化。
+- 印刷専用ページでは共通ナビを非表示にし、戻る・入力・印刷の操作だけに絞った。
+- 静的エクスポート環境に合わせ、URLの `projectId` はクライアント側で読み取る方式にした。
+
+#### 変更ファイル
+- `src/app/project/page.tsx`
+- `src/app/delivery-note/page.tsx`
+- `src/app/receipt-note/page.tsx`
+- `src/components/features/PrintSlipPage.tsx`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+- `npx cap sync android` 成功。
+- `android` 配下で `gradlew.bat assembleDebug` 成功。
+- APK成果物: `android/app/build/outputs/apk/debug/app-debug.apk`。
+- ローカル検証用の `http://127.0.0.1:3026/delivery-note?projectId=demo-1` で配送票の表示、入力反映、印刷ボタン表示を確認。
+- ローカル検証用の `http://127.0.0.1:3026/receipt-note?projectId=demo-1` で受領票の表示、入力反映、共通ナビ非表示を確認。
+- 390px幅で横スクロールなし、主要フォームが縦積みで操作できることを確認。
+
+#### 残課題
+- 実印刷のPDF余白・プリンタ設定は端末とブラウザ依存のため、実機プリンタでの最終確認が必要。
+- 帳票の品目テンプレート、宛先履歴、署名欄の手書き入力は未実装。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当差分またはコミットを取り消す。
+
 ### 2026-06-17 23:08: 工程表軽量化と保存診断の追加
 
 #### 目的

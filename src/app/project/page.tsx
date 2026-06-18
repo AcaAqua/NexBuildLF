@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
-import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2, Database } from "lucide-react";
+import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2, Database, ClipboardCheck, Truck } from "lucide-react";
 import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
@@ -445,6 +446,14 @@ function ProjectDetailContent() {
             </div>
           </div>
           <div className="header-right">
+            <Link href={`/delivery-note?projectId=${project.id}`} className="btn btn-outline slip-link" title="配送票を作成">
+              <Truck size={18} />
+              <span>配送票</span>
+            </Link>
+            <Link href={`/receipt-note?projectId=${project.id}`} className="btn btn-outline slip-link" title="受領票を作成">
+              <ClipboardCheck size={18} />
+              <span>受領票</span>
+            </Link>
             <IconButton icon={<Share2 size={22} />} className="btn-primary share-project-btn" onClick={handleShareProject} title="この案件だけ共有" />
             <IconButton icon={<MoreHorizontal size={24} />} className="btn-outline" onClick={() => setIsEditProjectOpen(true)} title="案件情報を編集" />
           </div>
@@ -1038,6 +1047,14 @@ function ProjectDetailContent() {
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        .slip-link {
+          height: 48px;
+          min-width: 116px;
+          justify-content: center;
+          gap: 8px;
+          white-space: nowrap;
         }
 
         .share-project-btn {
@@ -2536,6 +2553,8 @@ function ProjectDetailContent() {
           .header-right {
             flex: 0 0 auto;
             gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
           }
 
           .header-right :global(.btn) {
@@ -2543,6 +2562,10 @@ function ProjectDetailContent() {
             min-width: 46px;
             height: 44px;
             padding: 0;
+          }
+
+          .slip-link span {
+            display: none;
           }
 
           h1 {
