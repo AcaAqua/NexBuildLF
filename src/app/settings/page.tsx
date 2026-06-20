@@ -13,6 +13,7 @@ import { settingsRepository } from "@/lib/settingsRepository";
 
 type SettingsTab = 'display' | 'profile' | 'data' | 'field';
 type ShareMode = 'all' | 'projects' | 'partners';
+type ImportMode = 'add' | 'merge' | 'replace';
 
 const SHARE_MODE_META: Record<ShareMode, { label: string; detail: string; scope: BackupScope }> = {
   all: {
@@ -29,6 +30,21 @@ const SHARE_MODE_META: Record<ShareMode, { label: string; detail: string; scope:
     label: '業者のみ',
     detail: '協力業者マスターだけ共有',
     scope: { projects: false, partners: true, settings: false },
+  },
+};
+
+const IMPORT_MODE_META: Record<ImportMode, { label: string; detail: string }> = {
+  add: {
+    label: '追加のみ',
+    detail: '既存の現場・業者は変更せず、新しいデータだけ追加',
+  },
+  merge: {
+    label: '追加＋更新',
+    detail: '同じIDの現場・業者は共有データで更新',
+  },
+  replace: {
+    label: '全復元',
+    detail: '対象範囲を共有データで置き換え',
   },
 };
 
@@ -164,6 +180,7 @@ export default function SettingsPage() {
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactionStats, setCompactionStats] = useState<AttachmentCompactionStats | null>(null);
   const [shareMode, setShareMode] = useState<ShareMode>('all');
+  const [importMode, setImportMode] = useState<ImportMode>('add');
   const [fieldChecks, setFieldChecks] = useState<FieldDeviceCheck[]>([]);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -330,7 +347,9 @@ export default function SettingsPage() {
           e.target.value = '';
           return;
         }
+        const scope = getBackupScope(data);
         setPendingImport(data);
+        setImportMode('add');
         setImportSummary({
           projects: data.projects.length,
           partners: data.partners.length,
@@ -339,8 +358,8 @@ export default function SettingsPage() {
           exportedAt: data.exportedAt,
           fileName: file.name,
           diff: buildImportDiff(data),
-          scope: getBackupScope(data),
-          scopeLabel: data.shareLabel || getScopeLabel(getBackupScope(data)),
+          scope,
+          scopeLabel: data.shareLabel || getScopeLabel(scope),
           checkCode: data.checkCode || createCheckCode(JSON.stringify(data)),
         });
       } catch (err) {
@@ -355,26 +374,24 @@ export default function SettingsPage() {
     if (!pendingImport) return;
     try {
       const scope = getBackupScope(pendingImport);
-      const isFullRestore = isFullBackupScope(scope);
+      const isFullRestore = importMode === 'replace';
       if (scope.projects) {
         const projects = await Promise.all(pendingImport.projects.map(persistProjectAttachments));
-        projectRepository.replaceAll(
-          isFullRestore ? projects : mergeById(projectRepository.listAll(), projects),
-        );
+        projectRepository.replaceAll(applyImportedItems(projectRepository.listAll(), projects, importMode));
       }
       if (scope.partners) {
-        partnerRepository.replaceAll(
-          isFullRestore ? pendingImport.partners : mergeById(partnerRepository.list(), pendingImport.partners),
-        );
+        partnerRepository.replaceAll(applyImportedItems(partnerRepository.list(), pendingImport.partners, importMode));
       }
-      if (scope.settings) {
+      if (scope.settings && isFullRestore) {
         settingsRepository.save(pendingImport.settings);
       }
       refreshCompactionStats();
       setImportMessage(
         isFullRestore
           ? `${getScopeLabel(scope)}を復元しました。画面を更新します。`
-          : `${getScopeLabel(scope)}を追加/更新しました。他の端末内データは保持しています。画面を更新します。`,
+          : importMode === 'merge'
+            ? `${getScopeLabel(scope)}を追加/更新しました。他の端末内データは保持しています。画面を更新します。`
+            : `${getScopeLabel(scope)}の新規データだけを追加しました。既存データは変更していません。画面を更新します。`,
       );
       window.setTimeout(() => window.location.reload(), 600);
     } catch (error) {
@@ -386,6 +403,7 @@ export default function SettingsPage() {
     setPendingImport(null);
     setImportSummary(null);
     setImportMessage('');
+    setImportMode('add');
   };
 
   const handleCompactStorage = async () => {
@@ -756,13 +774,27 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <p className="restore-warning">
-                  {importSummary.diff.isFullRestore
-                    ? '全データ復元のため、現場・業者・設定はこの共有データで置き換わります。'
-                    : '案件・業者共有は追加/更新だけを反映し、共有データに含まれない端末内データは保持します。'}
+                  {getImportModeWarning(importMode)}
                 </p>
+                <div className="import-mode-panel" aria-label="取り込み方式">
+                  {(importSummary.diff.isFullRestore
+                    ? (['add', 'merge', 'replace'] as ImportMode[])
+                    : (['add', 'merge'] as ImportMode[])
+                  ).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`import-mode-btn ${importMode === mode ? 'active' : ''}`}
+                      onClick={() => setImportMode(mode)}
+                    >
+                      <strong>{IMPORT_MODE_META[mode].label}</strong>
+                      <span>{IMPORT_MODE_META[mode].detail}</span>
+                    </button>
+                  ))}
+                </div>
                 <div className="restore-actions">
                   <button type="button" className="btn btn-primary" onClick={handleConfirmImport}>
-                    この内容で取り込む
+                    {IMPORT_MODE_META[importMode].label}で取り込む
                   </button>
                   <button type="button" className="btn btn-outline" onClick={handleCancelImport}>
                     キャンセル
@@ -1382,6 +1414,48 @@ export default function SettingsPage() {
           font-weight: 900 !important;
         }
 
+        .import-mode-panel {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+          margin: 14px 0 0;
+        }
+
+        .import-mode-btn {
+          min-height: 74px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          gap: 4px;
+          padding: 12px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--text-main);
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.16s ease;
+        }
+
+        .import-mode-btn.active {
+          border-color: var(--primary);
+          background: var(--primary-pastel);
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+        }
+
+        .import-mode-btn strong {
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .import-mode-btn span {
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.45;
+        }
+
         .restore-actions {
           display: flex;
           gap: 10px;
@@ -1741,6 +1815,10 @@ export default function SettingsPage() {
             justify-content: flex-start;
           }
 
+          .import-mode-panel {
+            grid-template-columns: 1fr;
+          }
+
           .restore-actions {
             flex-direction: column;
           }
@@ -1795,10 +1873,29 @@ function countBackupPhotos(projects: Project[]) {
   }, 0);
 }
 
+function applyImportedItems<T extends { id: string }>(currentItems: T[], incomingItems: T[], mode: ImportMode) {
+  if (mode === 'replace') return incomingItems;
+  if (mode === 'add') {
+    const currentIds = new Set(currentItems.map((item) => item.id));
+    return [...currentItems, ...incomingItems.filter((item) => !currentIds.has(item.id))];
+  }
+  return mergeById(currentItems, incomingItems);
+}
+
 function mergeById<T extends { id: string }>(currentItems: T[], incomingItems: T[]) {
   const merged = new Map(currentItems.map((item) => [item.id, item]));
   incomingItems.forEach((item) => merged.set(item.id, item));
   return Array.from(merged.values());
+}
+
+function getImportModeWarning(mode: ImportMode) {
+  if (mode === 'replace') {
+    return '全復元を選ぶと、対象範囲は共有データで置き換わります。既存データが消える可能性があります。';
+  }
+  if (mode === 'merge') {
+    return '追加＋更新では、同じIDの現場・業者だけ共有データで更新し、それ以外の端末内データは保持します。';
+  }
+  return '追加のみでは、同じIDの既存データは変更せず、新しい現場・業者だけ追加します。';
 }
 
 function countDiff<T extends { id: string }>(
