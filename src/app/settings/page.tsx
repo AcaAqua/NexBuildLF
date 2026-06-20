@@ -68,6 +68,9 @@ interface DiffCounts {
   updated: number;
   removed: number;
   unchanged: number;
+  addedItems: string[];
+  updatedItems: string[];
+  removedItems: string[];
 }
 
 interface ImportDiff {
@@ -76,6 +79,7 @@ interface ImportDiff {
   currentPhotos: number;
   incomingPhotos: number;
   photoDelta: number;
+  isFullRestore: boolean;
 }
 
 interface FieldDeviceCheck {
@@ -351,18 +355,27 @@ export default function SettingsPage() {
     if (!pendingImport) return;
     try {
       const scope = getBackupScope(pendingImport);
+      const isFullRestore = isFullBackupScope(scope);
       if (scope.projects) {
         const projects = await Promise.all(pendingImport.projects.map(persistProjectAttachments));
-        projectRepository.replaceAll(projects);
+        projectRepository.replaceAll(
+          isFullRestore ? projects : mergeById(projectRepository.listAll(), projects),
+        );
       }
       if (scope.partners) {
-        partnerRepository.replaceAll(pendingImport.partners);
+        partnerRepository.replaceAll(
+          isFullRestore ? pendingImport.partners : mergeById(partnerRepository.list(), pendingImport.partners),
+        );
       }
       if (scope.settings) {
         settingsRepository.save(pendingImport.settings);
       }
       refreshCompactionStats();
-      setImportMessage(`${getScopeLabel(scope)}を取り込みました。画面を更新します。`);
+      setImportMessage(
+        isFullRestore
+          ? `${getScopeLabel(scope)}を復元しました。画面を更新します。`
+          : `${getScopeLabel(scope)}を追加/更新しました。他の端末内データは保持しています。画面を更新します。`,
+      );
       window.setTimeout(() => window.location.reload(), 600);
     } catch (error) {
       setImportMessage(getStorageWriteErrorMessage(error, 'バックアップを復元'));
@@ -707,19 +720,29 @@ export default function SettingsPage() {
                 </dl>
                 <div className="diff-panel" aria-label="現在の端末との差分">
                   {importSummary.scope.projects && (
-                  <div className="diff-row">
-                    <strong>現場</strong>
-                    <span className="diff-add">追加 {importSummary.diff.projects.added}</span>
-                    <span className="diff-update">更新 {importSummary.diff.projects.updated}</span>
-                    <span className="diff-remove">消える {importSummary.diff.projects.removed}</span>
+                  <div className="diff-block">
+                    <div className="diff-row">
+                      <strong>現場</strong>
+                      <span className="diff-add">追加 {importSummary.diff.projects.added}</span>
+                      <span className="diff-update">更新 {importSummary.diff.projects.updated}</span>
+                      <span className={importSummary.diff.isFullRestore ? 'diff-remove' : 'diff-keep'}>
+                        {importSummary.diff.isFullRestore ? `消える ${importSummary.diff.projects.removed}` : '他は保持'}
+                      </span>
+                    </div>
+                    <DiffItemList counts={importSummary.diff.projects} />
                   </div>
                   )}
                   {importSummary.scope.partners && (
-                  <div className="diff-row">
-                    <strong>協力業者</strong>
-                    <span className="diff-add">追加 {importSummary.diff.partners.added}</span>
-                    <span className="diff-update">更新 {importSummary.diff.partners.updated}</span>
-                    <span className="diff-remove">消える {importSummary.diff.partners.removed}</span>
+                  <div className="diff-block">
+                    <div className="diff-row">
+                      <strong>協力業者</strong>
+                      <span className="diff-add">追加 {importSummary.diff.partners.added}</span>
+                      <span className="diff-update">更新 {importSummary.diff.partners.updated}</span>
+                      <span className={importSummary.diff.isFullRestore ? 'diff-remove' : 'diff-keep'}>
+                        {importSummary.diff.isFullRestore ? `消える ${importSummary.diff.partners.removed}` : '他は保持'}
+                      </span>
+                    </div>
+                    <DiffItemList counts={importSummary.diff.partners} />
                   </div>
                   )}
                   {importSummary.scope.projects && (
@@ -732,7 +755,11 @@ export default function SettingsPage() {
                   </div>
                   )}
                 </div>
-                <p className="restore-warning">取り込むと対象範囲の端末データだけが、この共有データで上書きされます。</p>
+                <p className="restore-warning">
+                  {importSummary.diff.isFullRestore
+                    ? '全データ復元のため、現場・業者・設定はこの共有データで置き換わります。'
+                    : '案件・業者共有は追加/更新だけを反映し、共有データに含まれない端末内データは保持します。'}
+                </p>
                 <div className="restore-actions">
                   <button type="button" className="btn btn-primary" onClick={handleConfirmImport}>
                     この内容で取り込む
@@ -1241,8 +1268,13 @@ export default function SettingsPage() {
 
         .diff-panel {
           display: grid;
-          gap: 8px;
+          gap: 10px;
           margin: 14px 0;
+        }
+
+        .diff-block {
+          display: grid;
+          gap: 8px;
         }
 
         .diff-row {
@@ -1289,6 +1321,59 @@ export default function SettingsPage() {
         .diff-row .diff-remove {
           background: #fff1f0;
           color: var(--danger);
+        }
+
+        .diff-row .diff-keep {
+          background: var(--surface-hover);
+          color: var(--text-sub);
+        }
+
+        :global(.diff-item-list) {
+          list-style: none;
+          display: grid;
+          gap: 6px;
+          margin: 0;
+          padding: 0;
+        }
+
+        :global(.diff-item-list li),
+        :global(.diff-item-empty) {
+          min-height: 34px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0;
+          padding: 8px 10px;
+          border-radius: var(--radius-sm);
+          background: rgba(255, 255, 255, 0.64);
+          border: 1px solid var(--border-light);
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        :global(.diff-item-list li span) {
+          flex: 0 0 auto;
+          min-width: 38px;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: var(--primary-pastel);
+          color: var(--primary);
+          text-align: center;
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        :global(.diff-item-list li strong) {
+          color: var(--text-main);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        :global(.diff-item-more) {
+          justify-content: center;
+          color: var(--text-sub) !important;
         }
 
         .restore-warning {
@@ -1670,6 +1755,34 @@ export default function SettingsPage() {
   );
 }
 
+function DiffItemList({ counts }: { counts: DiffCounts }) {
+  const items = [
+    ...counts.addedItems.map((label) => ({ label, type: '追加' })),
+    ...counts.updatedItems.map((label) => ({ label, type: '更新' })),
+    ...counts.removedItems.map((label) => ({ label, type: '削除' })),
+  ].slice(0, 6);
+
+  if (items.length === 0) {
+    return <p className="diff-item-empty">変更明細はありません。</p>;
+  }
+
+  return (
+    <ul className="diff-item-list" aria-label="差分明細">
+      {items.map((item, index) => (
+        <li key={`${item.type}-${item.label}-${index}`} className={`diff-item-${item.type}`}>
+          <span>{item.type}</span>
+          <strong>{item.label}</strong>
+        </li>
+      ))}
+      {counts.added + counts.updated + counts.removed > items.length && (
+        <li className="diff-item-more">
+          ほか {counts.added + counts.updated + counts.removed - items.length} 件
+        </li>
+      )}
+    </ul>
+  );
+}
+
 function countBackupPhotos(projects: Project[]) {
   return projects.reduce((total, project) => {
     const taskPhotos = project.tasks.reduce((taskTotal, task) => {
@@ -1682,7 +1795,18 @@ function countBackupPhotos(projects: Project[]) {
   }, 0);
 }
 
-function countDiff<T extends { id: string }>(currentItems: T[], incomingItems: T[]): DiffCounts {
+function mergeById<T extends { id: string }>(currentItems: T[], incomingItems: T[]) {
+  const merged = new Map(currentItems.map((item) => [item.id, item]));
+  incomingItems.forEach((item) => merged.set(item.id, item));
+  return Array.from(merged.values());
+}
+
+function countDiff<T extends { id: string }>(
+  currentItems: T[],
+  incomingItems: T[],
+  getLabel: (item: T) => string,
+  includeRemoved: boolean,
+): DiffCounts {
   const currentMap = new Map(currentItems.map((item) => [item.id, item]));
   const incomingMap = new Map(incomingItems.map((item) => [item.id, item]));
 
@@ -1690,11 +1814,15 @@ function countDiff<T extends { id: string }>(currentItems: T[], incomingItems: T
   let updated = 0;
   let removed = 0;
   let unchanged = 0;
+  const addedItems: string[] = [];
+  const updatedItems: string[] = [];
+  const removedItems: string[] = [];
 
   incomingMap.forEach((incoming, id) => {
     const current = currentMap.get(id);
     if (!current) {
       added += 1;
+      addedItems.push(getLabel(incoming));
       return;
     }
     if (JSON.stringify(current) === JSON.stringify(incoming)) {
@@ -1702,28 +1830,54 @@ function countDiff<T extends { id: string }>(currentItems: T[], incomingItems: T
       return;
     }
     updated += 1;
+    updatedItems.push(getLabel(incoming));
   });
 
-  currentMap.forEach((_, id) => {
-    if (!incomingMap.has(id)) removed += 1;
-  });
+  if (includeRemoved) {
+    currentMap.forEach((current, id) => {
+      if (!incomingMap.has(id)) {
+        removed += 1;
+        removedItems.push(getLabel(current));
+      }
+    });
+  }
 
-  return { added, updated, removed, unchanged };
+  return { added, updated, removed, unchanged, addedItems, updatedItems, removedItems };
 }
 
 function buildImportDiff(incoming: BackupData): ImportDiff {
+  const scope = getBackupScope(incoming);
+  const isFullRestore = isFullBackupScope(scope);
   const currentProjects = projectRepository.listAll();
   const currentPartners = partnerRepository.list();
-  const currentPhotos = countBackupPhotos(currentProjects);
+  const incomingProjectIds = new Set(incoming.projects.map((project) => project.id));
+  const relevantCurrentProjects = isFullRestore
+    ? currentProjects
+    : currentProjects.filter((project) => incomingProjectIds.has(project.id));
+  const currentPhotos = countBackupPhotos(relevantCurrentProjects);
   const incomingPhotos = countBackupPhotos(incoming.projects);
 
   return {
-    projects: countDiff(currentProjects, incoming.projects),
-    partners: countDiff(currentPartners, incoming.partners),
+    projects: countDiff(currentProjects, incoming.projects, getProjectDiffLabel, isFullRestore),
+    partners: countDiff(currentPartners, incoming.partners, getPartnerDiffLabel, isFullRestore),
     currentPhotos,
     incomingPhotos,
     photoDelta: incomingPhotos - currentPhotos,
+    isFullRestore,
   };
+}
+
+function isFullBackupScope(scope: BackupScope) {
+  return scope.projects && scope.partners && scope.settings;
+}
+
+function getProjectDiffLabel(project: Project) {
+  const updated = project.updatedAt ? ` / 更新 ${project.updatedAt}` : '';
+  return `${project.title || '無題の現場'}${updated}`;
+}
+
+function getPartnerDiffLabel(partner: Partner) {
+  return `${partner.name || '名称未設定'}${partner.company ? ` / ${partner.company}` : ''}`;
 }
 
 function getBackupScope(data: BackupData): BackupScope {
