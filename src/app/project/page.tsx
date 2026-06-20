@@ -14,6 +14,7 @@ import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
 import { createOptimizedFieldImage, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS } from "@/lib/photoUtils";
 import { shareProject } from "@/lib/projectShare";
+import { PROJECT_ACTIVITY_TASK_ID, saveShareActivityLog } from "@/lib/projectActivity";
 import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from "@/lib/attachmentStore";
 import { StoredImage } from "@/components/ui/StoredImage";
 import { Suspense } from 'react';
@@ -30,6 +31,7 @@ const taskLogTypeLabels: Record<TaskLog['type'], string> = {
   photo: '写真',
   change: '変更',
   handoff: '申し送り',
+  share: '共有',
 };
 
 const quickLogTitles = ['写真記録', '進捗確認', '申し送り'];
@@ -139,6 +141,16 @@ function ProjectDetailContent() {
     if (!project) return;
     setStorageMessage('');
     const result = await shareProject(project);
+    try {
+      const updated = saveShareActivityLog(project, {
+        action: result === 'shared' ? 'sent' : 'downloaded',
+        scopeLabel: `案件: ${project.title}`,
+      });
+      setProject(updated);
+    } catch (error) {
+      setStorageMessage('共有は完了しましたが、案件履歴への記録に失敗しました。');
+      return;
+    }
     setStorageMessage(
       result === 'shared'
         ? 'この案件の共有を開始しました。相手は設定画面の共有データ取り込みから読み込めます。'
@@ -787,7 +799,7 @@ function ProjectDetailContent() {
                       </div>
                       <div className="timeline-card">
                         <div className="timeline-card-head">
-                          <span className="timeline-task-name">{task?.title || '工程未設定'}</span>
+                          <span className="timeline-task-name">{getTimelineTaskName(log, task)}</span>
                           <span className="timeline-task-count">記録 {taskLogCount}件</span>
                         </div>
                         <div className="timeline-log-title-row">
@@ -1964,6 +1976,11 @@ function ProjectDetailContent() {
           color: var(--warning);
         }
 
+        .timeline-log-type.type-share {
+          background: var(--primary-pastel);
+          color: var(--primary);
+        }
+
         .timeline-attachment-count {
           min-height: 26px;
           padding: 0 8px;
@@ -2845,6 +2862,11 @@ function formatLogCreatedAt(createdAt?: string) {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return '';
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function getTimelineTaskName(log: TaskLog, task?: Task) {
+  if (log.taskId === PROJECT_ACTIVITY_TASK_ID) return '案件全体';
+  return task?.title || '工程未設定';
 }
 
 export default function ProjectDetailPage() {

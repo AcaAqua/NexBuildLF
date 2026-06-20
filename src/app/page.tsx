@@ -13,6 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { shareProject } from "@/lib/projectShare";
+import { saveShareActivityLog } from "@/lib/projectActivity";
 
 export default function Home() {
 // ... existing state and logic ...
@@ -71,6 +72,16 @@ export default function Home() {
     e.stopPropagation();
     e.preventDefault();
     const result = await shareProject(project);
+    try {
+      saveShareActivityLog(project, {
+        action: result === 'shared' ? 'sent' : 'downloaded',
+        scopeLabel: `案件: ${project.title}`,
+      });
+      setProjects(projectRepository.listActive());
+    } catch (error) {
+      setShareMessage('共有は完了しましたが、案件履歴への記録に失敗しました。');
+      return;
+    }
     setShareMessage(
       result === 'shared'
         ? '案件の共有を開始しました。'

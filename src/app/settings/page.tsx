@@ -9,6 +9,7 @@ import { formatDataSize } from "@/lib/photoUtils";
 import { analyzeProjectAttachments, hydrateProjectAttachments, persistProjectAttachments, type AttachmentCompactionStats } from "@/lib/attachmentStore";
 import { partnerRepository } from "@/lib/partnerRepository";
 import { projectRepository } from "@/lib/projectRepository";
+import { addImportActivityLogs, addShareActivityLogs } from "@/lib/projectActivity";
 import { settingsRepository } from "@/lib/settingsRepository";
 
 type SettingsTab = 'display' | 'profile' | 'data' | 'field';
@@ -327,6 +328,7 @@ export default function SettingsPage() {
   const handleShare = async () => {
     setShareMessage('');
     const file = await createBackupFile();
+    let didUseNativeShare = false;
 
     try {
       if (navigator.canShare?.({ files: [file] }) && navigator.share) {
@@ -335,15 +337,42 @@ export default function SettingsPage() {
           text: `${SHARE_MODE_META[shareMode].label}の共有データです。同じアプリの設定画面から差分確認できます。`,
           files: [file],
         });
-        setShareMessage('共有データを送信しました。');
+        didUseNativeShare = true;
+        const recorded = recordBulkShareActivity('sent', file.name);
+        setShareMessage(recorded
+          ? '共有データを送信しました。対象案件の履歴にも記録しました。'
+          : '共有データを送信しました。案件履歴への記録は失敗しました。');
         return;
       }
 
       downloadBackupFile(file);
-      setShareMessage('この端末では直接共有に未対応のため、共有用ファイルを保存しました。LINE・メールへ添付してください。');
+      const recorded = recordBulkShareActivity('downloaded', file.name);
+      setShareMessage(recorded
+        ? 'この端末では直接共有に未対応のため、共有用ファイルを保存しました。対象案件の履歴にも記録しました。'
+        : 'この端末では直接共有に未対応のため、共有用ファイルを保存しました。案件履歴への記録は失敗しました。');
     } catch (error) {
       downloadBackupFile(file);
-      setShareMessage('共有を完了できなかったため、共有用ファイルを保存しました。');
+      const recorded = recordBulkShareActivity(didUseNativeShare ? 'sent' : 'downloaded', file.name);
+      setShareMessage(recorded
+        ? '共有を完了できなかったため、共有用ファイルを保存しました。対象案件の履歴にも記録しました。'
+        : '共有を完了できなかったため、共有用ファイルを保存しました。案件履歴への記録は失敗しました。');
+    }
+  };
+
+  const recordBulkShareActivity = (action: 'sent' | 'downloaded', fileName: string) => {
+    const scope = SHARE_MODE_META[shareMode].scope;
+    if (!scope.projects) return true;
+
+    try {
+      const projects = projectRepository.listAll();
+      projectRepository.replaceAll(addShareActivityLogs(projects, {
+        action,
+        scopeLabel: SHARE_MODE_META[shareMode].label,
+        fileName,
+      }));
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
@@ -397,7 +426,14 @@ export default function SettingsPage() {
       const isFullRestore = importMode === 'replace';
       if (scope.projects) {
         const projects = await Promise.all(pendingImport.projects.map(persistProjectAttachments));
-        projectRepository.replaceAll(applyImportedItems(projectRepository.listAll(), projects, importMode));
+        const projectsWithLogs = addImportActivityLogs(projects, {
+          modeLabel: IMPORT_MODE_META[importMode].label,
+          scopeLabel: importSummary.scopeLabel,
+          checkCode: importSummary.checkCode,
+          fileName: importSummary.fileName,
+          sourceExportedAt: importSummary.exportedAt,
+        });
+        projectRepository.replaceAll(applyImportedItems(projectRepository.listAll(), projectsWithLogs, importMode));
       }
       if (scope.partners) {
         partnerRepository.replaceAll(applyImportedItems(partnerRepository.list(), pendingImport.partners, importMode));

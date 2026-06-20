@@ -36,7 +36,7 @@ export interface TaskPhotoAttachment {
   createdAt: string;
 }
 
-export type TaskLogType = 'memo' | 'photo' | 'change' | 'handoff';
+export type TaskLogType = 'memo' | 'photo' | 'change' | 'handoff' | 'share';
 
 export interface TaskLogAttachment {
   id: string;
