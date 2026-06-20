@@ -1,7 +1,7 @@
 'use client';
 
 import type { Project, TaskLogAttachment, TaskPhotoAttachment } from './storage';
-import { estimateDataUrlBytes } from './photoUtils';
+import { createThumbnailDataUrl, estimateDataUrlBytes } from './photoUtils';
 
 type StoredAttachment = TaskLogAttachment | TaskPhotoAttachment;
 
@@ -121,8 +121,9 @@ export async function persistAttachmentDataUrl<T extends StoredAttachment>(attac
 
   const dataUrl = attachment.dataUrl;
   const byteSize = estimateDataUrlBytes(dataUrl);
+  const thumbnailDataUrl = attachment.thumbnailDataUrl || await createThumbnailDataUrl(dataUrl).catch(() => undefined);
   if (!isBrowserIndexedDbAvailable()) {
-    return { ...attachment, byteSize };
+    return { ...attachment, thumbnailDataUrl, byteSize };
   }
 
   const storageKey = attachment.storageKey || `field-photo-${Date.now()}-${attachment.id}`;
@@ -136,11 +137,12 @@ export async function persistAttachmentDataUrl<T extends StoredAttachment>(attac
     return {
       ...attachment,
       storageKey,
+      thumbnailDataUrl,
       byteSize,
     };
   } catch (error) {
     console.warn('Failed to persist attachment to IndexedDB', error);
-    return { ...attachment, byteSize };
+    return { ...attachment, thumbnailDataUrl, byteSize };
   }
 }
 

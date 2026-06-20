@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import Modal from "@/components/ui/Modal";
 import { Users, Plus, Phone, Mail, Edit3, Trash2, Building2, Download, Upload } from "lucide-react";
-import { storage, Partner } from "@/lib/storage";
+import { Partner } from "@/lib/storage";
+import { partnerRepository } from "@/lib/partnerRepository";
 
 export default function PartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -15,7 +16,7 @@ export default function PartnersPage() {
   const [companyFilter, setCompanyFilter] = useState('all');
 
   useEffect(() => {
-    setPartners(storage.getPartners());
+    setPartners(partnerRepository.list());
   }, []);
 
   const handleOpenAdd = () => {
@@ -30,8 +31,8 @@ export default function PartnersPage() {
 
   const handleDelete = (id: string) => {
     if (confirm('本当にこの業者情報を削除しますか？')) {
-      storage.deletePartner(id);
-      setPartners(storage.getPartners());
+      partnerRepository.remove(id);
+      setPartners(partnerRepository.list());
     }
   };
 
@@ -47,8 +48,8 @@ export default function PartnersPage() {
       email: formData.get('email') as string,
       notes: formData.get('notes') as string,
     };
-    storage.savePartner(newPartner);
-    setPartners(storage.getPartners());
+    partnerRepository.save(newPartner);
+    setPartners(partnerRepository.list());
     setIsModalOpen(false);
   };
 

@@ -5,7 +5,8 @@ import { format, addDays, startOfDay, differenceInDays, min, parseISO } from 'da
 import { ja } from 'date-fns/locale';
 import { motion, Reorder, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, CircleDashed, Maximize, MessageSquareText, Minimize, PauseCircle, PlayCircle, Plus, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
-import { storage, Task, TaskLog, Period } from '@/lib/storage';
+import { Task, TaskLog, Period } from '@/lib/storage';
+import { settingsRepository } from '@/lib/settingsRepository';
 
 interface GanttChartProps {
   tasks: Task[];
@@ -81,7 +82,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const [visibleTaskCount, setVisibleTaskCount] = React.useState(TASK_RENDER_STEP);
 
   React.useEffect(() => {
-    setCellWidth(getCellWidthForScale(storage.getSettings().uiScale || 'md'));
+    setCellWidth(getCellWidthForScale(settingsRepository.get().uiScale || 'md'));
   }, []);
 
   React.useEffect(() => {

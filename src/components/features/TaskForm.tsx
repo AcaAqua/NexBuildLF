@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/storage';
+import { Task, Period, Partner, TaskPhotoAttachment } from '@/lib/storage';
 import { addDays, parseISO, format } from 'date-fns';
 import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 import { createOptimizedFieldImage, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS } from '@/lib/photoUtils';
 import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from '@/lib/attachmentStore';
 import { StoredImage } from '@/components/ui/StoredImage';
+import { partnerRepository } from '@/lib/partnerRepository';
 
 interface TaskFormProps {
   initialData?: Partial<Task>;
@@ -51,7 +52,7 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
   );
 
   useEffect(() => {
-    setPartners(storage.getPartners());
+    setPartners(partnerRepository.list());
   }, []);
 
   const colors = [

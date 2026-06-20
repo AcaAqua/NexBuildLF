@@ -23,6 +23,50 @@
 
 ## Detailed Progress (詳細な進捗)
 
+### 2026-06-20 16:37: 保存窓口整理と写真サムネイル補完
+
+#### 目的
+設定・業者・案件データの読み書き窓口を分離し、将来の保存方式変更や不具合切り分けをしやすくする。あわせて既存写真の軽量表示を改善する。
+
+#### 変更内容
+- 設定・協力業者のRepositoryを追加し、画面側の直接storage参照を削減。
+- 設定画面の共有、復元、差分確認、保存データ軽量化、初期化処理をRepository経由に整理。
+- 工程表と工程編集フォームの設定/業者読み込みをRepository経由に変更。
+- 既存base64写真を保存データ軽量化するとき、サムネイルが未作成の写真にも `thumbnailDataUrl` を補完する処理を追加。
+- 案件単体共有ファイル作成時の設定取得もRepository経由に変更。
+
+#### 変更ファイル
+- `src/app/settings/page.tsx`
+- `src/components/features/GanttChart.tsx`
+- `src/components/features/TaskForm.tsx`
+- `src/components/features/PrintSlipPage.tsx`
+- `src/components/layout/MainLayout.tsx`
+- `src/lib/attachmentStore.ts`
+- `src/lib/photoUtils.ts`
+- `src/lib/partnerRepository.ts`
+- `src/lib/projectRepository.ts`
+- `src/lib/projectShare.ts`
+- `src/lib/settingsRepository.ts`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+- `npx cap sync android` 成功。
+- `android/gradlew.bat assembleDebug` 成功。
+- `http://127.0.0.1:3025/` の現場一覧表示、コンソールエラーなしを確認。
+- `http://127.0.0.1:3025/project?id=demo-1` の案件画面、工程表タブ、配送票/受領票/共有ボタン、保存容量チップ表示を確認。
+- `http://127.0.0.1:3025/settings` のデータタブで共有、差分チェック、保存データ軽量化パネル表示を確認。
+- 390px幅の設定画面で横はみ出しがないことを確認。
+
+#### 残課題
+- IndexedDB保存はWebView標準機能を使うため、端末OSや容量不足時の挙動は実機で継続確認する。
+- ネイティブファイル保存や差分同期の自動化は未実装。まずは軽量化と共有JSONの安定化を優先する。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当コミットまたは作業差分を取り消す。
+
 ### 2026-06-20 16:26: 写真サムネイル化と案件Repository分離
 
 #### 目的

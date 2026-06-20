@@ -2,7 +2,9 @@
 
 import React from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import { storage, Project, Settings } from '@/lib/storage';
+import { Project, Settings } from '@/lib/storage';
+import { projectRepository } from '@/lib/projectRepository';
+import { settingsRepository } from '@/lib/settingsRepository';
 import { ArrowLeft, ClipboardCheck, Printer, Truck } from 'lucide-react';
 import Link from 'next/link';
 
@@ -83,8 +85,8 @@ export default function PrintSlipPage({ type, initialProjectId }: PrintSlipPageP
   const [items, setItems] = React.useState<SlipItem[]>(() => [0, 1, 2, 3, 4].map(createBlankItem));
 
   React.useEffect(() => {
-    const loadedProjects = storage.getProjects();
-    const loadedSettings = storage.getSettings();
+    const loadedProjects = projectRepository.listAll();
+    const loadedSettings = settingsRepository.get();
     setProjects(loadedProjects);
     setSettings(loadedSettings);
 

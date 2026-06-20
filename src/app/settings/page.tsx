@@ -4,9 +4,12 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import { Settings, Save, Download, Upload, AlertTriangle, Moon, Sun, Monitor, Smartphone, Tablet, Camera, HardDrive, Wifi, CheckCircle2, AlertCircle, RotateCcw, ListChecks, Fingerprint, ZoomIn, ClipboardCheck, Share2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { getStorageWriteErrorMessage, storage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
+import { getStorageWriteErrorMessage, Settings as SettingsType, Project, Partner } from "@/lib/storage";
 import { formatDataSize } from "@/lib/photoUtils";
 import { analyzeProjectAttachments, hydrateProjectAttachments, persistProjectAttachments, type AttachmentCompactionStats } from "@/lib/attachmentStore";
+import { partnerRepository } from "@/lib/partnerRepository";
+import { projectRepository } from "@/lib/projectRepository";
+import { settingsRepository } from "@/lib/settingsRepository";
 
 type SettingsTab = 'display' | 'profile' | 'data' | 'field';
 type ShareMode = 'all' | 'projects' | 'partners';
@@ -163,7 +166,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('display');
 
   useEffect(() => {
-    setSettings(storage.getSettings());
+    setSettings(settingsRepository.get());
     setMounted(true);
     refreshFieldChecks();
     refreshCompactionStats();
@@ -171,7 +174,7 @@ export default function SettingsPage() {
 
   const refreshCompactionStats = () => {
     if (typeof window === 'undefined') return;
-    setCompactionStats(analyzeProjectAttachments(storage.getProjects()));
+    setCompactionStats(analyzeProjectAttachments(projectRepository.listAll()));
   };
 
   const refreshFieldChecks = async () => {
@@ -229,7 +232,7 @@ export default function SettingsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      storage.saveSettings(settings);
+      settingsRepository.save(settings);
       setSaveMessage('設定を保存しました。');
       // UIスケールの変更を即時反映させる
       document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
@@ -243,7 +246,7 @@ export default function SettingsPage() {
   const createBackupData = async (): Promise<BackupData> => {
     const mode = SHARE_MODE_META[shareMode];
     const projects = mode.scope.projects
-      ? await Promise.all(storage.getProjects().map(hydrateProjectAttachments))
+      ? await Promise.all(projectRepository.listAll().map(hydrateProjectAttachments))
       : [];
     const data: BackupData = {
       app: 'kouteikanri',
@@ -252,8 +255,8 @@ export default function SettingsPage() {
       shareScope: mode.scope,
       shareLabel: mode.label,
       projects,
-      partners: mode.scope.partners ? storage.getPartners() : [],
-      settings: mode.scope.settings ? storage.getSettings() : { companyName: '', userName: '', qualifications: '', uiScale: 'md' },
+      partners: mode.scope.partners ? partnerRepository.list() : [],
+      settings: mode.scope.settings ? settingsRepository.get() : { companyName: '', userName: '', qualifications: '', uiScale: 'md' },
     };
     data.checkCode = createCheckCode(JSON.stringify({ ...data, checkCode: '' }));
     return data;
@@ -350,13 +353,13 @@ export default function SettingsPage() {
       const scope = getBackupScope(pendingImport);
       if (scope.projects) {
         const projects = await Promise.all(pendingImport.projects.map(persistProjectAttachments));
-        storage.replaceProjects(projects);
+        projectRepository.replaceAll(projects);
       }
       if (scope.partners) {
-        localStorage.setItem('kouteikanri_partners', JSON.stringify(pendingImport.partners));
+        partnerRepository.replaceAll(pendingImport.partners);
       }
       if (scope.settings) {
-        storage.saveSettings(pendingImport.settings);
+        settingsRepository.save(pendingImport.settings);
       }
       refreshCompactionStats();
       setImportMessage(`${getScopeLabel(scope)}を取り込みました。画面を更新します。`);
@@ -378,7 +381,7 @@ export default function SettingsPage() {
 
     try {
       setIsCompacting(true);
-      const currentProjects = storage.getProjects();
+      const currentProjects = projectRepository.listAll();
       const before = analyzeProjectAttachments(currentProjects);
 
       if (before.inlineAttachmentCount === 0) {
@@ -389,7 +392,7 @@ export default function SettingsPage() {
 
       const compactedProjects = await Promise.all(currentProjects.map(persistProjectAttachments));
       const after = analyzeProjectAttachments(compactedProjects);
-      storage.replaceProjects(compactedProjects);
+      projectRepository.replaceAll(compactedProjects);
       setCompactionStats(after);
 
       const savedBytes = Math.max(before.jsonBytes - after.jsonBytes, 0);
@@ -405,10 +408,10 @@ export default function SettingsPage() {
 
   const handleReset = () => {
     if (confirm('すべてのプロジェクト・業者データが削除され、デモ状態に戻ります。本当によろしいですか？')) {
-      localStorage.removeItem('kouteikanri_projects');
-      localStorage.removeItem('kouteikanri_partners');
-      localStorage.removeItem('kouteikanri_settings');
-      storage.seed(); // デモデータを再生成
+      projectRepository.clearAll();
+      partnerRepository.clearAll();
+      settingsRepository.clear();
+      projectRepository.seedDemoIfEmpty(); // デモデータを再生成
       alert('初期化が完了しました。');
       window.location.reload();
     }
@@ -498,7 +501,7 @@ export default function SettingsPage() {
                 className={`theme-btn ${settings.uiScale === 'sm' ? 'active' : ''}`}
                 onClick={() => {
                   setSettings({...settings, uiScale: 'sm'});
-                  storage.saveSettings({...settings, uiScale: 'sm'});
+                  settingsRepository.save({...settings, uiScale: 'sm'});
                   document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
                   document.body.classList.add('ui-size-sm');
                 }}
@@ -509,7 +512,7 @@ export default function SettingsPage() {
                 className={`theme-btn ${(!settings.uiScale || settings.uiScale === 'md') ? 'active' : ''}`}
                 onClick={() => {
                   setSettings({...settings, uiScale: 'md'});
-                  storage.saveSettings({...settings, uiScale: 'md'});
+                  settingsRepository.save({...settings, uiScale: 'md'});
                   document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
                   document.body.classList.add('ui-size-md');
                 }}
@@ -520,7 +523,7 @@ export default function SettingsPage() {
                 className={`theme-btn ${settings.uiScale === 'lg' ? 'active' : ''}`}
                 onClick={() => {
                   setSettings({...settings, uiScale: 'lg'});
-                  storage.saveSettings({...settings, uiScale: 'lg'});
+                  settingsRepository.save({...settings, uiScale: 'lg'});
                   document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
                   document.body.classList.add('ui-size-lg');
                 }}
@@ -1709,8 +1712,8 @@ function countDiff<T extends { id: string }>(currentItems: T[], incomingItems: T
 }
 
 function buildImportDiff(incoming: BackupData): ImportDiff {
-  const currentProjects = storage.getProjects();
-  const currentPartners = storage.getPartners();
+  const currentProjects = projectRepository.listAll();
+  const currentPartners = partnerRepository.list();
   const currentPhotos = countBackupPhotos(currentProjects);
   const incomingPhotos = countBackupPhotos(incoming.projects);
 

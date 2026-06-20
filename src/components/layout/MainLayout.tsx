@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Briefcase, Users, Calendar, Settings, Menu, X, Archive, Info, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { storage } from "@/lib/storage";
+import { settingsRepository } from "@/lib/settingsRepository";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -32,7 +32,7 @@ export default function MainLayout({ children, hideNav = false }: MainLayoutProp
 
   useEffect(() => {
     // UIスケールの適用
-    const settings = storage.getSettings();
+    const settings = settingsRepository.get();
     const scale = settings.uiScale || 'md';
     document.body.classList.remove('ui-size-sm', 'ui-size-md', 'ui-size-lg');
     document.body.classList.add(`ui-size-${scale}`);

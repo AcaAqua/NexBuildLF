@@ -11,5 +11,9 @@ export const projectRepository = {
   save: (project: Project) => storage.saveProject(project),
   remove: (id: string) => storage.deleteProject(id),
   replaceAll: (projects: Project[]) => storage.replaceProjects(projects),
+  clearAll: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('kouteikanri_projects');
+  },
   stats: () => storage.getProjectStorageStats(),
 };

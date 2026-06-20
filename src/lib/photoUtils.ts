@@ -53,6 +53,26 @@ export function createOptimizedFieldImage(file: File): Promise<OptimizedFieldIma
   });
 }
 
+export function createThumbnailDataUrl(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!dataUrl) {
+      resolve('');
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      try {
+        resolve(resizeLoadedImage(img, { maxWidth: 360, maxHeight: 360, quality: 0.56 }));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+    img.src = dataUrl;
+  });
+}
+
 function resizeLoadedImage(img: HTMLImageElement, options: ResizeImageOptions = {}) {
   const canvas = document.createElement('canvas');
   const maxWidth = options.maxWidth || 960;

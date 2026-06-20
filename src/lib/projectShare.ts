@@ -1,8 +1,8 @@
 'use client';
 
 import type { Project, Settings } from './storage';
-import { storage } from './storage';
 import { hydrateProjectAttachments } from './attachmentStore';
+import { settingsRepository } from './settingsRepository';
 
 type ShareResult = 'shared' | 'downloaded';
 
@@ -43,7 +43,7 @@ function sanitizeFileName(value: string) {
   return clean.slice(0, 40) || 'project';
 }
 
-export async function createProjectShareFile(project: Project, settings: Settings = storage.getSettings()) {
+export async function createProjectShareFile(project: Project, settings: Settings = settingsRepository.get()) {
   const hydratedProject = await hydrateProjectAttachments(project);
   const payloadBase = {
     app: 'kouteikanri' as const,
