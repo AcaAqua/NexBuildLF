@@ -5,7 +5,7 @@ import { Task, Period, storage, Partner, TaskPhotoAttachment } from '@/lib/stora
 import { addDays, parseISO, format } from 'date-fns';
 import { Camera, CheckCircle2, CircleDashed, Image as ImageIcon, PauseCircle, PlayCircle, PlusCircle, Trash2, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
-import { FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from '@/lib/photoUtils';
+import { createOptimizedFieldImage, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS } from '@/lib/photoUtils';
 import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from '@/lib/attachmentStore';
 import { StoredImage } from '@/components/ui/StoredImage';
 
@@ -110,11 +110,13 @@ export default function TaskForm({ initialData, onSubmit, onCancel }: TaskFormPr
       setIsPhotoProcessing(true);
       const now = new Date().toISOString();
       const resizedPhotos = await Promise.all(selectedFiles.map(async (file, index) => {
+        const optimized = await createOptimizedFieldImage(file);
         const attachment = {
           id: `task-photo-${Date.now()}-${index}`,
           fileName: file.name || `現場写真-${index + 1}.jpg`,
           fileType: 'image/jpeg',
-          dataUrl: await resizeImageFile(file),
+          dataUrl: optimized.dataUrl,
+          thumbnailDataUrl: optimized.thumbnailDataUrl,
           createdAt: now,
         };
         return persistAttachmentDataUrl(attachment);

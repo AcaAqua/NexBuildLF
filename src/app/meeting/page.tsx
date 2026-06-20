@@ -3,7 +3,8 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import GanttChart from "@/components/features/GanttChart";
-import { storage, Project } from "@/lib/storage";
+import { Project } from "@/lib/storage";
+import { projectRepository } from "@/lib/projectRepository";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
@@ -16,7 +17,7 @@ function MeetingContent() {
 
   useEffect(() => {
     if (projectId) {
-      const found = storage.getProjectById(projectId);
+      const found = projectRepository.findById(projectId);
       if (found) {
         setProject(found);
       }
@@ -70,7 +71,7 @@ function MeetingContent() {
               tasks: project.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
             };
             setProject(updatedProject);
-            storage.saveProject(updatedProject);
+            projectRepository.save(updatedProject);
           }}
         />
       </main>

@@ -23,6 +23,47 @@
 
 ## Detailed Progress (詳細な進捗)
 
+### 2026-06-20 16:26: 写真サムネイル化と案件Repository分離
+
+#### 目的
+アプリ本体を軽くし、将来のSQLite/IndexedDB分離へ進みやすくする。Pythonなど外部補助は使わず、既存データ形式と画面操作を維持したまま、写真表示と案件保存入口の負荷を下げる。
+
+#### 変更内容
+- 新規撮影・選択する工程写真と工程記録写真に、一覧表示用の軽量サムネイル `thumbnailDataUrl` を追加。
+- `StoredImage` は通常表示ではサムネイルを優先し、拡大プレビューではIndexedDBの原寸相当データを読むように変更。
+- `projectRepository` を追加し、主要画面の案件読み書きを `storage` 直呼びからRepository経由へ寄せた。
+- 工程表の段階描画にIntersectionObserverを追加し、下端へ近づくと次の工程行を自動追加表示するようにした。
+- 既存写真・既存JSON形式との後方互換は維持。DB構造変更やマイグレーションは未実施。
+
+#### 変更ファイル
+- `src/lib/photoUtils.ts`
+- `src/lib/storage.ts`
+- `src/lib/projectRepository.ts`
+- `src/components/ui/StoredImage.tsx`
+- `src/components/features/TaskForm.tsx`
+- `src/components/features/GanttChart.tsx`
+- `src/app/page.tsx`
+- `src/app/archive/page.tsx`
+- `src/app/schedule/page.tsx`
+- `src/app/project/page.tsx`
+- `src/app/meeting/page.tsx`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+- `npx cap sync android` 成功。
+- `android` 配下で `gradlew.bat assembleDebug` 成功。
+- APK成果物: `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+#### 残課題
+- 既存写真にはサムネイルがないため、既存写真の表示は従来どおり。必要なら後続で「既存写真のサムネイル再生成」機能を追加する。
+- Repositoryは案件系の入口を先行分離した段階。設定・協力業者・帳票履歴も同様に分離するとSQLite/IndexedDB移行がさらに楽になる。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当差分またはコミットを取り消す。
+
 ### 2026-06-20 16:13: 保存読み取りキャッシュと工程表段階描画
 
 #### 目的

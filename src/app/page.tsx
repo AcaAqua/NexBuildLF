@@ -6,7 +6,8 @@ import ProjectCard from "@/components/features/ProjectCard";
 import Modal from "@/components/ui/Modal";
 import { motion } from "framer-motion";
 import { LayoutGrid, Plus, Archive, ArchiveRestore, Trash2, Share2 } from "lucide-react";
-import { storage, Project } from "@/lib/storage";
+import { Project } from "@/lib/storage";
+import { projectRepository } from "@/lib/projectRepository";
 import Link from 'next/link';
 import { IconButton } from "@/components/ui/IconButton";
 import { FilterBar } from "@/components/ui/FilterBar";
@@ -24,8 +25,8 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [shareMessage, setShareMessage] = useState('');
   useEffect(() => {
-    storage.seed();
-    setProjects(storage.getActiveProjects());
+    projectRepository.seedDemoIfEmpty();
+    setProjects(projectRepository.listActive());
   }, []);
 
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
@@ -43,8 +44,8 @@ export default function Home() {
       tasks: [],
       isArchived: false
     };
-    storage.saveProject(newProj);
-    setProjects(storage.getActiveProjects());
+    projectRepository.save(newProj);
+    setProjects(projectRepository.listActive());
     setIsModalOpen(false);
   };
 
@@ -52,8 +53,8 @@ export default function Home() {
     e.stopPropagation();
     e.preventDefault(); // カードのリンク遷移を防ぐ
     if (confirm('本当に削除しますか？アーカイブ化ではなく完全に消去されます。')) {
-      storage.deleteProject(id);
-      setProjects(storage.getActiveProjects());
+      projectRepository.remove(id);
+      setProjects(projectRepository.listActive());
     }
   };
 
@@ -61,8 +62,8 @@ export default function Home() {
     e.stopPropagation();
     e.preventDefault();
     if (confirm('この現場をアーカイブ（保管室）へ移動しますか？')) {
-      storage.saveProject({ ...project, isArchived: true });
-      setProjects(storage.getActiveProjects());
+      projectRepository.save({ ...project, isArchived: true });
+      setProjects(projectRepository.listActive());
     }
   };
 

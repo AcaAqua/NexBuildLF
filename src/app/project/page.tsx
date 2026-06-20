@@ -6,12 +6,13 @@ import Link from 'next/link';
 import MainLayout from "@/components/layout/MainLayout";
 import { motion } from "framer-motion";
 import { ChevronLeft, Calendar, MapPin, MoreHorizontal, Plus, Camera, FileText, Pencil, Copy, Trash2, PauseCircle, GanttChartSquare, ListTodo, History, Share2, Database, ClipboardCheck, Truck } from "lucide-react";
-import { getStorageWriteErrorMessage, storage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
+import { getStorageWriteErrorMessage, Project, Task, TaskLog, TaskLogAttachment, Period } from "@/lib/storage";
+import { projectRepository } from "@/lib/projectRepository";
 import GanttChart from "@/components/features/GanttChart";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "@/components/features/TaskForm";
 import { IconButton } from "@/components/ui/IconButton";
-import { FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS, resizeImageFile } from "@/lib/photoUtils";
+import { createOptimizedFieldImage, FIELD_PHOTO_LIMIT_MESSAGE, formatDataSize, MAX_FIELD_PHOTOS } from "@/lib/photoUtils";
 import { shareProject } from "@/lib/projectShare";
 import { getAttachmentByteSize, persistAttachmentDataUrl, stripAttachmentDataUrl } from "@/lib/attachmentStore";
 import { StoredImage } from "@/components/ui/StoredImage";
@@ -101,7 +102,7 @@ function ProjectDetailContent() {
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('chart');
 
   const loadData = () => {
-    const found = id ? storage.getProjectById(id) : undefined;
+    const found = id ? projectRepository.findById(id) : undefined;
     if (found) {
       setProject(found);
     } else {
@@ -126,7 +127,7 @@ function ProjectDetailContent() {
       memo: formData.get('memo') as string || '',
     };
     try {
-      storage.saveProject(updated);
+      projectRepository.save(updated);
       setProject(updated);
       setIsEditProjectOpen(false);
     } catch (error) {
@@ -215,7 +216,7 @@ function ProjectDetailContent() {
   const logAttachmentBytes = logAttachments.reduce((total, item) => total + getAttachmentByteSize(item), 0);
   const storageStats = useMemo(() => {
     if (!project || typeof window === 'undefined') return null;
-    return storage.getProjectStorageStats();
+    return projectRepository.stats();
   }, [project]);
   const isStorageHeavy = storageStats ? storageStats.rawJsonBytes > 3 * 1024 * 1024 || storageStats.attachmentBytes > 2 * 1024 * 1024 : false;
 
@@ -248,7 +249,7 @@ function ProjectDetailContent() {
 
     const updatedProject = { ...project, tasks: updatedTasks };
     try {
-      storage.saveProject(updatedProject);
+      projectRepository.save(updatedProject);
       loadData();
       setIsModalOpen(false);
     } catch (error) {
@@ -304,11 +305,13 @@ function ProjectDetailContent() {
       setIsLogImageProcessing(true);
       const now = new Date().toISOString();
       const images = await Promise.all(selectedFiles.map(async (file, index) => {
+        const optimized = await createOptimizedFieldImage(file);
         const attachment = {
           id: `att-${Date.now()}-${index}`,
           fileName: file.name,
           fileType: 'image/jpeg',
-          dataUrl: await resizeImageFile(file),
+          dataUrl: optimized.dataUrl,
+          thumbnailDataUrl: optimized.thumbnailDataUrl,
           createdAt: now,
         };
         return persistAttachmentDataUrl(attachment);
@@ -354,7 +357,7 @@ function ProjectDetailContent() {
       taskLogs: [...(project.taskLogs || []), newLog],
     };
     try {
-      storage.saveProject(updated);
+      projectRepository.save(updated);
       setProject(updated);
       setLogTitle('');
       setLogBody('');
@@ -368,7 +371,7 @@ function ProjectDetailContent() {
     if (!project) return;
     const updated: Project = { ...project, tasks };
     try {
-      storage.saveProject(updated);
+      projectRepository.save(updated);
       setProject(updated);
       setStorageMessage('');
     } catch (error) {
@@ -401,7 +404,7 @@ function ProjectDetailContent() {
   const handleReorderTasks = (newTasks: Task[]) => {
     if (!project) return;
     const updated: Project = { ...project, tasks: newTasks };
-    storage.saveProject(updated);
+    projectRepository.save(updated);
     setProject(updated);
   };
 
@@ -421,7 +424,7 @@ function ProjectDetailContent() {
     }
     const updated: Project = { ...project, dailyMemos: updatedMemos };
     try {
-      storage.saveProject(updated);
+      projectRepository.save(updated);
       setProject(updated);
       setIsDateModalOpen(false);
       setStorageMessage('');
@@ -1023,7 +1026,7 @@ function ProjectDetailContent() {
         >
           {previewAttachment && (
             <div className="attachment-preview-modal">
-              <StoredImage attachment={previewAttachment} alt={previewAttachment.fileName} />
+              <StoredImage attachment={previewAttachment} alt={previewAttachment.fileName} preferOriginal />
             </div>
           )}
         </Modal>

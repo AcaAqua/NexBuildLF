@@ -7,30 +7,38 @@ import { resolveAttachmentDataUrl } from '@/lib/attachmentStore';
 interface StoredImageProps {
   attachment: {
     dataUrl?: string;
+    thumbnailDataUrl?: string;
     storageKey?: string;
     fileName?: string;
   };
   alt?: string;
   className?: string;
+  preferOriginal?: boolean;
 }
 
-export function StoredImage({ attachment, alt, className }: StoredImageProps) {
-  const [src, setSrc] = React.useState(attachment.dataUrl || '');
+export function StoredImage({ attachment, alt, className, preferOriginal = false }: StoredImageProps) {
+  const initialSrc = preferOriginal
+    ? attachment.dataUrl || attachment.thumbnailDataUrl || ''
+    : attachment.thumbnailDataUrl || attachment.dataUrl || '';
+  const [src, setSrc] = React.useState(initialSrc);
 
   React.useEffect(() => {
     let cancelled = false;
-    setSrc(attachment.dataUrl || '');
+    const nextSrc = preferOriginal
+      ? attachment.dataUrl || attachment.thumbnailDataUrl || ''
+      : attachment.thumbnailDataUrl || attachment.dataUrl || '';
+    setSrc(nextSrc);
 
-    if (!attachment.dataUrl && attachment.storageKey) {
+    if (preferOriginal && !attachment.dataUrl && attachment.storageKey) {
       resolveAttachmentDataUrl(attachment).then((dataUrl) => {
-        if (!cancelled) setSrc(dataUrl);
+        if (!cancelled) setSrc(dataUrl || attachment.thumbnailDataUrl || '');
       });
     }
 
     return () => {
       cancelled = true;
     };
-  }, [attachment]);
+  }, [attachment, preferOriginal]);
 
   if (!src) {
     return (

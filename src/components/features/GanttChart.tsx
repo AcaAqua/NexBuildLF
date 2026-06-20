@@ -77,6 +77,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
   const timelineScrollAreasRef = React.useRef<Set<HTMLDivElement>>(new Set());
   const syncingScrollRef = React.useRef(false);
+  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   const [visibleTaskCount, setVisibleTaskCount] = React.useState(TASK_RENDER_STEP);
 
   React.useEffect(() => {
@@ -136,6 +137,16 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const timelineWidth = cellWidth * days.length;
   const visibleTasks = useMemo(() => tasks.slice(0, visibleTaskCount), [tasks, visibleTaskCount]);
   const hiddenTaskCount = Math.max(0, tasks.length - visibleTasks.length);
+
+  React.useEffect(() => {
+    if (hiddenTaskCount <= 0 || !loadMoreRef.current || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      setVisibleTaskCount(count => Math.min(tasks.length, count + TASK_RENDER_STEP));
+    }, { rootMargin: '240px 0px' });
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hiddenTaskCount, tasks.length]);
 
   const timelineGridStyle = useMemo(() => {
     const cellStops = days.flatMap((day, index) => {
@@ -528,7 +539,7 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
             )}
           </Reorder.Group>
           {hiddenTaskCount > 0 && (
-            <div className="gantt-load-more">
+            <div className="gantt-load-more" ref={loadMoreRef}>
               <button
                 type="button"
                 className="btn btn-outline"

@@ -30,6 +30,7 @@ export interface TaskPhotoAttachment {
   fileName: string;
   fileType: string;
   dataUrl?: string;
+  thumbnailDataUrl?: string;
   storageKey?: string;
   byteSize?: number;
   createdAt: string;
@@ -42,6 +43,7 @@ export interface TaskLogAttachment {
   fileName: string;
   fileType: string;
   dataUrl?: string;
+  thumbnailDataUrl?: string;
   storageKey?: string;
   byteSize?: number;
   createdAt: string;

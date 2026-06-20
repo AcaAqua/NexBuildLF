@@ -8,7 +8,8 @@ import { FilterBar } from "@/components/ui/FilterBar";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { IconButton } from "@/components/ui/IconButton";
 import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
-import { storage, Project } from "@/lib/storage";
+import { Project } from "@/lib/storage";
+import { projectRepository } from "@/lib/projectRepository";
 
 export default function ArchivePage() {
   const [archivedProjects, setArchivedProjects] = useState<Project[]>([]);
@@ -17,7 +18,7 @@ export default function ArchivePage() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const loadData = () => {
-    setArchivedProjects(storage.getArchivedProjects());
+    setArchivedProjects(projectRepository.listArchived());
   };
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export default function ArchivePage() {
     e.stopPropagation();
     e.preventDefault();
     if (confirm('この現場をダッシュボードに復元しますか？')) {
-      storage.saveProject({ ...project, isArchived: false });
+      projectRepository.save({ ...project, isArchived: false });
       loadData();
     }
   };
@@ -37,7 +38,7 @@ export default function ArchivePage() {
     e.stopPropagation();
     e.preventDefault();
     if (confirm('本当に削除しますか？この操作は取り消せません。')) {
-      storage.deleteProject(id);
+      projectRepository.remove(id);
       loadData();
     }
   };

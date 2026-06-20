@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import ProjectCard from "@/components/features/ProjectCard";
-import { storage, Project } from "@/lib/storage";
+import { Project } from "@/lib/storage";
+import { projectRepository } from "@/lib/projectRepository";
 
 export default function SchedulePage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    setProjects(storage.getActiveProjects());
+    setProjects(projectRepository.listActive());
   }, []);
 
   return (
