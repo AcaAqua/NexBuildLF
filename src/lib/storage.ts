@@ -104,6 +104,8 @@ export interface ProjectStorageStats {
 }
 
 const STORAGE_KEY = 'kouteikanri_projects';
+let cachedProjectsRaw: string | null = null;
+let cachedProjects: Project[] | null = null;
 
 const estimateTextBytes = (value: string) => new Blob([value]).size;
 
@@ -134,12 +136,30 @@ export const storage = {
   getProjects: (): Project[] => {
     if (typeof window === 'undefined') return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const data = localStorage.getItem(STORAGE_KEY) || '';
+      if (cachedProjects !== null && cachedProjectsRaw === data) return cachedProjects;
+      const parsedProjects: Project[] = data ? JSON.parse(data) : [];
+      cachedProjectsRaw = data;
+      cachedProjects = parsedProjects;
+      return parsedProjects;
     } catch (e) {
       console.error('Failed to parse projects from localStorage', e);
+      cachedProjectsRaw = null;
+      cachedProjects = null;
       return [];
     }
+  },
+
+  getProjectById: (id: string): Project | undefined => {
+    return storage.getProjects().find(project => project.id === id);
+  },
+
+  getActiveProjects: (): Project[] => {
+    return storage.getProjects().filter(project => !project.isArchived);
+  },
+
+  getArchivedProjects: (): Project[] => {
+    return storage.getProjects().filter(project => project.isArchived);
   },
 
   // プロジェクト保存・更新
@@ -153,18 +173,27 @@ export const storage = {
       projects.push({ ...project, updatedAt: new Date().toLocaleDateString('ja-JP') });
     }
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    const nextRaw = JSON.stringify(projects);
+    localStorage.setItem(STORAGE_KEY, nextRaw);
+    cachedProjectsRaw = nextRaw;
+    cachedProjects = projects;
   },
 
   // プロジェクト削除
   deleteProject: (id: string) => {
     const projects = storage.getProjects();
     const filtered = projects.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    const nextRaw = JSON.stringify(filtered);
+    localStorage.setItem(STORAGE_KEY, nextRaw);
+    cachedProjectsRaw = nextRaw;
+    cachedProjects = filtered;
   },
 
   replaceProjects: (projects: Project[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    const nextRaw = JSON.stringify(projects);
+    localStorage.setItem(STORAGE_KEY, nextRaw);
+    cachedProjectsRaw = nextRaw;
+    cachedProjects = projects;
   },
 
   getProjectStorageStats: (): ProjectStorageStats => {
@@ -286,7 +315,10 @@ export const storage = {
           isArchived: false
         }
       ];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(demoProjects));
+      const nextRaw = JSON.stringify(demoProjects);
+      localStorage.setItem(STORAGE_KEY, nextRaw);
+      cachedProjectsRaw = nextRaw;
+      cachedProjects = demoProjects;
     }
   },
 

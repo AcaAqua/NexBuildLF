@@ -33,6 +33,7 @@ const getTaskPeriods = (task: Task): Period[] => {
 const MIN_CELL_WIDTH = 32;
 const MAX_CELL_WIDTH = 96;
 const ZOOM_STEP = 8;
+const TASK_RENDER_STEP = 40;
 
 const clampCellWidth = (value: number) => Math.min(MAX_CELL_WIDTH, Math.max(MIN_CELL_WIDTH, value));
 
@@ -76,10 +77,15 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   const pinchRef = React.useRef<{ distance: number; cellWidth: number } | null>(null);
   const timelineScrollAreasRef = React.useRef<Set<HTMLDivElement>>(new Set());
   const syncingScrollRef = React.useRef(false);
+  const [visibleTaskCount, setVisibleTaskCount] = React.useState(TASK_RENDER_STEP);
 
   React.useEffect(() => {
     setCellWidth(getCellWidthForScale(storage.getSettings().uiScale || 'md'));
   }, []);
+
+  React.useEffect(() => {
+    setVisibleTaskCount(TASK_RENDER_STEP);
+  }, [tasks.length]);
 
   React.useEffect(() => {
     return () => {
@@ -128,6 +134,8 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
   }, [tasks]);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const timelineWidth = cellWidth * days.length;
+  const visibleTasks = useMemo(() => tasks.slice(0, visibleTaskCount), [tasks, visibleTaskCount]);
+  const hiddenTaskCount = Math.max(0, tasks.length - visibleTasks.length);
 
   const timelineGridStyle = useMemo(() => {
     const cellStops = days.flatMap((day, index) => {
@@ -286,6 +294,13 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
     });
   };
 
+  const handleVisibleReorder = (newVisibleTasks: Task[]) => {
+    if (!onReorder) return;
+    const visibleIds = new Set(newVisibleTasks.map(task => task.id));
+    const hiddenTasks = tasks.filter(task => !visibleIds.has(task.id));
+    onReorder([...newVisibleTasks, ...hiddenTasks]);
+  };
+
   return (
     <>
       <div className={`gantt-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}>
@@ -404,14 +419,14 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           {/* Timeline Body - Reorderable Group */}
           <Reorder.Group 
             axis="y" 
-            values={tasks} 
-            onReorder={onReorder || (() => {})}
+            values={visibleTasks} 
+            onReorder={handleVisibleReorder}
             className="gantt-body"
           >
             {(!tasks || tasks.length === 0) ? (
               <div className="empty-state">工程が登録されていません</div>
             ) : (
-              tasks.map((task) => {
+              visibleTasks.map((task) => {
                 const taskPeriods = getTaskPeriods(task);
                 return (
                   <Reorder.Item key={task.id} value={task} className="gantt-row">
@@ -512,6 +527,17 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
               })
             )}
           </Reorder.Group>
+          {hiddenTaskCount > 0 && (
+            <div className="gantt-load-more">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setVisibleTaskCount(count => Math.min(tasks.length, count + TASK_RENDER_STEP))}
+              >
+                工程をさらに表示 {hiddenTaskCount}件
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -628,6 +654,19 @@ export default function GanttChart({ tasks, dailyMemos = {}, taskLogs = [], onUp
           display: flex;
           border-bottom: 1px solid var(--border-light);
           width: 100%;
+        }
+
+        .gantt-load-more {
+          padding: 12px;
+          border-top: 1px solid var(--border);
+          background: var(--surface);
+          display: flex;
+          justify-content: center;
+        }
+
+        .gantt-load-more .btn {
+          min-height: 44px;
+          font-weight: 900;
         }
 
         .task-name-col {

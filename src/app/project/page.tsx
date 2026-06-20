@@ -101,8 +101,7 @@ function ProjectDetailContent() {
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('chart');
 
   const loadData = () => {
-    const data = storage.getProjects();
-    const found = data.find(p => p.id === id);
+    const found = id ? storage.getProjectById(id) : undefined;
     if (found) {
       setProject(found);
     } else {

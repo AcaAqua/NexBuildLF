@@ -16,8 +16,7 @@ function MeetingContent() {
 
   useEffect(() => {
     if (projectId) {
-      const projects = storage.getProjects();
-      const found = projects.find(p => p.id === projectId);
+      const found = storage.getProjectById(projectId);
       if (found) {
         setProject(found);
       }

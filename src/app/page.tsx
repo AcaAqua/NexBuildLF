@@ -25,7 +25,7 @@ export default function Home() {
   const [shareMessage, setShareMessage] = useState('');
   useEffect(() => {
     storage.seed();
-    setProjects(storage.getProjects());
+    setProjects(storage.getActiveProjects());
   }, []);
 
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,7 +44,7 @@ export default function Home() {
       isArchived: false
     };
     storage.saveProject(newProj);
-    setProjects(storage.getProjects());
+    setProjects(storage.getActiveProjects());
     setIsModalOpen(false);
   };
 
@@ -53,7 +53,7 @@ export default function Home() {
     e.preventDefault(); // カードのリンク遷移を防ぐ
     if (confirm('本当に削除しますか？アーカイブ化ではなく完全に消去されます。')) {
       storage.deleteProject(id);
-      setProjects(storage.getProjects());
+      setProjects(storage.getActiveProjects());
     }
   };
 
@@ -62,7 +62,7 @@ export default function Home() {
     e.preventDefault();
     if (confirm('この現場をアーカイブ（保管室）へ移動しますか？')) {
       storage.saveProject({ ...project, isArchived: true });
-      setProjects(storage.getProjects());
+      setProjects(storage.getActiveProjects());
     }
   };
 

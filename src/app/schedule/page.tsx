@@ -9,7 +9,7 @@ export default function SchedulePage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    setProjects(storage.getProjects());
+    setProjects(storage.getActiveProjects());
   }, []);
 
   return (

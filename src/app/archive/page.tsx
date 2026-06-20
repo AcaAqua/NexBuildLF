@@ -17,8 +17,7 @@ export default function ArchivePage() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const loadData = () => {
-    const allProjects = storage.getProjects();
-    setArchivedProjects(allProjects.filter(p => p.isArchived));
+    setArchivedProjects(storage.getArchivedProjects());
   };
 
   useEffect(() => {

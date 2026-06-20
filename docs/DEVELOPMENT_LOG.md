@@ -23,6 +23,43 @@
 
 ## Detailed Progress (詳細な進捗)
 
+### 2026-06-20 16:13: 保存読み取りキャッシュと工程表段階描画
+
+#### 目的
+Pythonなどの外部補助案は採用せず、アプリ本体だけで軽く効率よく動く方向へ改善する。既存データ形式を変えず、将来SQLite/IndexedDB分離へ移しやすい保存入口と、大量工程時の初期描画負荷低減を先行実装する。
+
+#### 変更内容
+- `storage.getProjects()` に同一JSON文字列の再パースを避けるメモリキャッシュを追加。
+- `getProjectById`、`getActiveProjects`、`getArchivedProjects` を追加し、画面側が用途別の保存入口を使えるようにした。
+- ダッシュボード、予定ボード、保管室、案件詳細、打ち合わせモードの読み取りを用途別APIへ寄せた。
+- 工程表は最初に最大40件を描画し、残りは「工程をさらに表示」で段階表示するようにした。
+- 大量工程時でも、初回表示で全行のタイムラインDOMを一度に作らない構成へ寄せた。
+
+#### 変更ファイル
+- `src/lib/storage.ts`
+- `src/components/features/GanttChart.tsx`
+- `src/app/page.tsx`
+- `src/app/archive/page.tsx`
+- `src/app/schedule/page.tsx`
+- `src/app/project/page.tsx`
+- `src/app/meeting/page.tsx`
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm run typecheck` 成功。
+- `npm run lint` 成功。
+- `npm run build` 成功。
+- `npx cap sync android` 成功。
+- `android` 配下で `gradlew.bat assembleDebug` 成功。
+- APK成果物: `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+#### 残課題
+- 40件を超える工程での並び替えは、表示中の工程を優先して並び替え、未表示分は後ろに保持する仕様。大量工程の本格運用では仮想スクロール化が次候補。
+- 保存形式自体はまだ単一JSONのため、次段階でRepository層をさらに分け、Android SQLite/Web IndexedDBへ移行しやすくする。
+
+#### 復旧方法
+Git管理下の変更のため、必要に応じて該当差分またはコミットを取り消す。
+
 ### 2026-06-18 13:16: 配送票・受領票の別ページ印刷
 
 #### 目的
