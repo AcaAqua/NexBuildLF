@@ -48,6 +48,8 @@ const IMPORT_MODE_META: Record<ImportMode, { label: string; detail: string }> = 
   },
 };
 
+const IMPORT_RESULT_STORAGE_KEY = 'kouteikanri_last_import_result';
+
 interface BackupScope {
   projects: boolean;
   partners: boolean;
@@ -96,6 +98,21 @@ interface ImportDiff {
   incomingPhotos: number;
   photoDelta: number;
   isFullRestore: boolean;
+}
+
+interface ImportResultSummary {
+  mode: ImportMode;
+  scopeLabel: string;
+  completedAt: string;
+  projects: ImportResultCounts;
+  partners: ImportResultCounts;
+}
+
+interface ImportResultCounts {
+  added: number;
+  updated: number;
+  kept: number;
+  removed: number;
 }
 
 interface FieldDeviceCheck {
@@ -174,6 +191,7 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState('');
   const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
   const [importMessage, setImportMessage] = useState('');
   const [shareMessage, setShareMessage] = useState('');
   const [compactMessage, setCompactMessage] = useState('');
@@ -188,6 +206,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setSettings(settingsRepository.get());
+    setImportResult(readLastImportResult());
     setMounted(true);
     refreshFieldChecks();
     refreshCompactionStats();
@@ -338,6 +357,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportMessage('');
+    setImportResult(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -371,7 +391,7 @@ export default function SettingsPage() {
   };
 
   const handleConfirmImport = async () => {
-    if (!pendingImport) return;
+    if (!pendingImport || !importSummary) return;
     try {
       const scope = getBackupScope(pendingImport);
       const isFullRestore = importMode === 'replace';
@@ -385,6 +405,9 @@ export default function SettingsPage() {
       if (scope.settings && isFullRestore) {
         settingsRepository.save(pendingImport.settings);
       }
+      const result = buildImportResult(importSummary, importMode);
+      storeLastImportResult(result);
+      setImportResult(result);
       refreshCompactionStats();
       setImportMessage(
         isFullRestore
@@ -667,6 +690,21 @@ export default function SettingsPage() {
             </div>
             {shareMessage && <p className="share-message" role="status">{shareMessage}</p>}
             {importMessage && <p className="import-message">{importMessage}</p>}
+            {importResult && (
+              <div className="import-result-panel" role="status" aria-label="直近の取り込み結果">
+                <div className="import-result-header">
+                  <CheckCircle2 size={20} />
+                  <div>
+                    <h3>直近の取り込み結果</h3>
+                    <p>{importResult.scopeLabel} / {IMPORT_MODE_META[importResult.mode].label} / {formatBackupDate(importResult.completedAt)}</p>
+                  </div>
+                </div>
+                <div className="import-result-grid">
+                  <ImportResultRow label="現場" counts={importResult.projects} />
+                  <ImportResultRow label="協力業者" counts={importResult.partners} />
+                </div>
+              </div>
+            )}
             <div className="compact-storage-panel">
               <div className="compact-storage-main">
                 <div className="action-icon compact"><HardDrive size={20} /></div>
@@ -1414,6 +1452,93 @@ export default function SettingsPage() {
           font-weight: 900 !important;
         }
 
+        .import-result-panel {
+          display: grid;
+          gap: 12px;
+          margin-top: 14px;
+          padding: 14px;
+          border-radius: var(--radius-md);
+          background: var(--success-pastel);
+          border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+        }
+
+        .import-result-header {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          color: var(--success);
+        }
+
+        .import-result-header h3 {
+          margin: 0;
+          color: var(--text-main);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .import-result-header p {
+          margin: 2px 0 0;
+          color: var(--text-sub);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .import-result-grid {
+          display: grid;
+          gap: 8px;
+        }
+
+        :global(.import-result-row) {
+          display: grid;
+          grid-template-columns: 92px repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          align-items: center;
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          background: rgba(255, 255, 255, 0.74);
+          border: 1px solid var(--border-light);
+        }
+
+        :global(.import-result-row strong) {
+          color: var(--text-main);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        :global(.import-result-row span) {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: var(--surface-hover);
+          color: var(--text-sub);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        :global(.import-result-row .diff-add) {
+          background: var(--success-pastel);
+          color: var(--success);
+        }
+
+        :global(.import-result-row .diff-update) {
+          background: var(--primary-pastel);
+          color: var(--primary);
+        }
+
+        :global(.import-result-row .diff-keep) {
+          background: var(--surface-hover);
+          color: var(--text-sub);
+        }
+
+        :global(.import-result-row .diff-remove) {
+          background: #fff1f0;
+          color: var(--danger);
+        }
+
         .import-mode-panel {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1811,7 +1936,20 @@ export default function SettingsPage() {
             align-items: stretch;
           }
 
+          :global(.import-result-row) {
+            grid-template-columns: 1fr 1fr;
+            align-items: stretch;
+          }
+
+          :global(.import-result-row strong) {
+            grid-column: 1 / -1;
+          }
+
           .diff-row span {
+            justify-content: flex-start;
+          }
+
+          :global(.import-result-row span) {
             justify-content: flex-start;
           }
 
@@ -1861,6 +1999,18 @@ function DiffItemList({ counts }: { counts: DiffCounts }) {
   );
 }
 
+function ImportResultRow({ label, counts }: { label: string; counts: ImportResultCounts }) {
+  return (
+    <div className="import-result-row">
+      <strong>{label}</strong>
+      <span className="diff-add">追加 {counts.added}</span>
+      <span className="diff-update">更新 {counts.updated}</span>
+      <span className="diff-keep">保持 {counts.kept}</span>
+      <span className="diff-remove">削除 {counts.removed}</span>
+    </div>
+  );
+}
+
 function countBackupPhotos(projects: Project[]) {
   return projects.reduce((total, project) => {
     const taskPhotos = project.tasks.reduce((taskTotal, task) => {
@@ -1871,6 +2021,64 @@ function countBackupPhotos(projects: Project[]) {
     }, 0);
     return total + taskPhotos + logPhotos;
   }, 0);
+}
+
+function readLastImportResult(): ImportResultSummary | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(IMPORT_RESULT_STORAGE_KEY);
+  if (!raw) return null;
+  sessionStorage.removeItem(IMPORT_RESULT_STORAGE_KEY);
+  try {
+    const parsed = JSON.parse(raw) as ImportResultSummary;
+    if (!parsed || !parsed.mode || !parsed.scopeLabel || !parsed.completedAt) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function storeLastImportResult(result: ImportResultSummary) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(IMPORT_RESULT_STORAGE_KEY, JSON.stringify(result));
+}
+
+function buildImportResult(summary: ImportSummary, mode: ImportMode): ImportResultSummary {
+  return {
+    mode,
+    scopeLabel: summary.scopeLabel,
+    completedAt: new Date().toISOString(),
+    projects: summarizeImportCounts(summary.diff.projects, mode, summary.scope.projects),
+    partners: summarizeImportCounts(summary.diff.partners, mode, summary.scope.partners),
+  };
+}
+
+function summarizeImportCounts(counts: DiffCounts, mode: ImportMode, enabled: boolean): ImportResultCounts {
+  if (!enabled) return { added: 0, updated: 0, kept: 0, removed: 0 };
+
+  if (mode === 'replace') {
+    return {
+      added: counts.added,
+      updated: counts.updated,
+      kept: counts.unchanged,
+      removed: counts.removed,
+    };
+  }
+
+  if (mode === 'merge') {
+    return {
+      added: counts.added,
+      updated: counts.updated,
+      kept: counts.unchanged + counts.removed,
+      removed: 0,
+    };
+  }
+
+  return {
+    added: counts.added,
+    updated: 0,
+    kept: counts.updated + counts.unchanged + counts.removed,
+    removed: 0,
+  };
 }
 
 function applyImportedItems<T extends { id: string }>(currentItems: T[], incomingItems: T[], mode: ImportMode) {
