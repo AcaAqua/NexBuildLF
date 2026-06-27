@@ -41,6 +41,14 @@ npm run dev
 npm run build
 ```
 
+## Open Source Governance
+
+- License: [MIT](LICENSE)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Notices: [NOTICE](NOTICE)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+
 ## Android APK Download
 
 テスト用APKはGitHub Releaseから直接ダウンロードできます。

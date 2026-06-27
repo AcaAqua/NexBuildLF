@@ -1,0 +1,10 @@
+NexBuildLF
+Copyright (c) 2026 NexBuildLF Project
+
+This product includes software developed by the NexBuildLF Project and its contributors.
+
+NexBuildLF is distributed under the MIT License. See `LICENSE` for the full license text.
+
+Third-party dependencies are licensed by their respective authors. See `package.json` and `package-lock.json` for dependency names and versions.
+
+This repository may include archived prototype code under `legacy-php/` for reference. Unless otherwise noted in that directory, the repository license applies to those files as part of this project.
