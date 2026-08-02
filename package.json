@@ -11,27 +11,32 @@
     "mcp:debug": "node scripts/kouteikanri-debug-mcp.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.1",
-    "@capacitor/cli": "^8.3.1",
-    "@capacitor/core": "^8.3.1",
+    "@capacitor/android": "8.5.0",
+    "@capacitor/core": "8.5.0",
+    "@ducanh2912/next-pwa": "10.2.9",
     "date-fns": "^4.1.0",
-    "firebase": "^12.12.1",
+    "firebase": "12.17.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.468.0",
-    "next": "15.5.15",
-    "next-auth": "^5.0.0-beta.31",
-    "next-pwa": "^5.6.0",
+    "next": "15.5.22",
+    "next-auth": "5.0.0-beta.32",
     "next-themes": "^0.4.6",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@capacitor/cli": "8.5.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.15",
+    "eslint-config-next": "15.5.22",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@rollup/plugin-terser": "1.0.0",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
   }
 }

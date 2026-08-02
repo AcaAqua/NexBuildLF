@@ -472,3 +472,42 @@ Git管理下の変更のため、必要に応じて該当コミットまたは�
 - [x] `settings/page.tsx` & `globals.css`: UIスケール（文字・要素サイズ）の変更設定を追加。CSS変数による連動。
 - [x] `meeting/page.tsx`: 打ち合わせモード（ナビ非表示・全画面）の新規作成。
 - [x] `about/page.tsx`: アプリ説明ページの新規作成（テスト版ビジョンの明記）。
+
+### 2026-08-02 21:46: 依存脆弱性の解消とPWA基盤更新
+
+#### 目的
+公開中のWeb版とAndroid debug APKの互換性を維持しながら、npm依存監査で検出されたCritical・High脆弱性を解消する。
+
+#### 変更内容
+- Next.jsを15.5.22、NextAuthを5.0.0-beta.32へ更新。
+- Capacitorを8.5.0、Firebaseを12.17.0、MCP SDKを1.30.0へ更新。
+- 更新停止中の`next-pwa`を、互換APIを持つ`@ducanh2912/next-pwa` 10.2.9へ置換。
+- PostCSS、Sharp、Rollup terser pluginを修正版へoverrideし、Critical・High経路を除去。
+- Capacitor CLIを実行時依存からdevDependencyへ移動。
+- Workbox 7系でService WorkerとWorkbox配布ファイルを再生成。
+
+#### 変更ファイル
+- `package.json`
+- `package-lock.json`
+- `next.config.ts`
+- `public/sw.js`
+- `public/workbox-4754cb34.js`（削除）
+- `public/workbox-f1770938.js`（追加）
+- `docs/DEVELOPMENT_LOG.md`
+
+#### 確認結果
+- `npm ci` 成功。
+- `npm audit --omit=dev --audit-level=moderate` は0件。
+- 全依存の監査はCritical 0、High 0、Moderate 3。
+- `npm run build` でtypecheck、Lint、Next.js static export、PWA生成に成功。
+- `public/sw.js`が参照するWorkboxファイルは`public`と`out`の両方に存在。
+- `npx cap sync android` 成功、Android追跡ファイルの差分なし。
+- Android Studio同梱JDK 21で`:app:assembleDebug`成功。
+
+#### 残課題
+- Moderate 3件はCapacitor CLIのiOS補助依存`xcode`から旧`uuid`へ到達する開発時経路。Android運用では使用しない。
+- `uuid`の強制major overrideはiOSツール互換性を壊す可能性があるため実施していない。
+- PWAの実端末更新、オフライン動作、GoogleログインはDeploy Previewで追加確認する。
+
+#### 復旧方法
+Git管理下の変更として、この依存更新commitをrevertする。旧PWA生成物へ戻す場合は、`next.config.ts`、`package.json`、`package-lock.json`、`public/sw.js`、`public/workbox-*.js`を同じcommit単位で戻す。
