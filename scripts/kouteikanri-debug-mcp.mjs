@@ -242,7 +242,7 @@ server.registerTool(
       localApkExists: Boolean(apkStat),
       localApkSizeBytes: apkStat?.size ?? null,
       localApkModifiedAt: apkStat?.mtime.toISOString() ?? null,
-      githubWorkflowUrl: 'https://github.com/AcaAqua/NexBuildLF/actions/workflows/android-debug-apk.yml',
+      githubWorkflowUrl: 'https://github.com/LuckyFieldsLLC/NexBuildLF/actions/workflows/android-debug-apk.yml',
       artifactName: 'kouteikanri-debug-apk',
     };
     return textResult(safeJson(structuredContent), structuredContent);
