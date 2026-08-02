@@ -53,8 +53,8 @@ npm run build
 
 テスト用APKはGitHub Releaseから直接ダウンロードできます。
 
-- 最新debug APK: [kouteikanri-debug.apk](https://github.com/AcaAqua/NexBuildLF/releases/download/debug-latest/kouteikanri-debug.apk)
-- Releaseページ: [debug-latest](https://github.com/AcaAqua/NexBuildLF/releases/tag/debug-latest)
+- 最新debug APK: [kouteikanri-debug.apk](https://github.com/LuckyFieldsLLC/NexBuildLF/releases/download/debug-latest/kouteikanri-debug.apk)
+- Releaseページ: [debug-latest](https://github.com/LuckyFieldsLLC/NexBuildLF/releases/tag/debug-latest)
 
 `main` へ反映されるたびに GitHub Actions がAPKを再ビルドし、同じURLのファイルを更新します。
 
